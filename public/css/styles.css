@@ -1414,6 +1414,7 @@ mark.missing { padding: 1px 6px; border-radius: 5px; background: var(--danger-so
   .account-bar > .btn.ghost { display: none; }
   .account-credit { display: none; }
   .account-chip { padding: 3px; }
+  .account-menu { position: fixed; top: 60px; left: 12px; right: 12px; width: auto; }
   .page { padding: 22px 16px 80px; }
   .lesson-stage { padding: 8px; }
   .rail-card { padding: 8px 16px 18px; }
