@@ -30,5 +30,5 @@ ssh "$HOST" 'set -e
   sudo systemctl enable --now mathlens-backup.timer
   sudo systemctl enable mathlens
   sudo systemctl restart mathlens
-  sleep 2
-  curl -fsS http://127.0.0.1:3000/healthz && echo " MathLens is running."'
+  for i in $(seq 1 30); do curl -fsS http://127.0.0.1:3000/healthz 2>/dev/null && { echo " MathLens is running."; exit 0; }; sleep 1; done
+  echo "MathLens did not start. Check: sudo journalctl -u mathlens" >&2; exit 1'
