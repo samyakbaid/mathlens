@@ -18,7 +18,8 @@
   const COMMANDS = new Set('alpha beta gamma delta epsilon varepsilon zeta eta theta vartheta iota kappa lambda mu nu xi pi varpi rho varrho sigma varsigma tau upsilon phi varphi chi psi omega Gamma Delta Theta Lambda Xi Pi Sigma Upsilon Phi Psi Omega frac dfrac tfrac sqrt sum prod int iint iiint oint lim limsup liminf sup inf max min arg argmax argmin det exp log ln sin cos tan sec csc cot arcsin arccos arctan sinh cosh tanh left right big Big bigg Bigg bigl bigr Bigl Bigr middle text textbf textit mathrm mathbf mathit mathcal mathbb mathsf boldsymbol operatorname cdot cdots ldots dots vdots ddots times div pm mp ast star circ bullet le leq ge geq neq ne approx sim simeq equiv cong propto ll gg in notin subset subseteq supset supseteq cup cap setminus emptyset varnothing forall exists nexists to rightarrow leftarrow Rightarrow Leftarrow leftrightarrow Leftrightarrow mapsto implies iff uparrow downarrow longrightarrow longleftarrow partial nabla infty hbar ell Re Im hat bar vec tilde dot ddot overline underline widehat widetilde overrightarrow quad qquad begin end matrix pmatrix bmatrix vmatrix cases aligned langle rangle lvert rvert lVert rVert lfloor rfloor lceil rceil top perp parallel angle triangle displaystyle textstyle color mid'.split(' '));
   function normalizeTex(tex) {
     // Plain words in a formula box would lose their spaces in math mode
-    if (/^[A-Za-z][A-Za-z ,.'’:;?!-]* [A-Za-z ,.'’:;?!-]*$/.test(String(tex).trim())) return `\\text{${String(tex).trim()}}`;
+    const plain = String(tex).trim();
+    if (/[A-Za-z]{2,}[ ,]+[A-Za-z0-9]{2,}/.test(plain) && !/[\\^_{}=+*/]/.test(plain)) return `\\text{${plain}}`;
     return String(tex).replace(/\\\\([A-Za-z]+)/g, (match, word, offset, text) =>
       text[offset - 1] === '\\' || !COMMANDS.has(word) ? match : '\\' + word,
     );

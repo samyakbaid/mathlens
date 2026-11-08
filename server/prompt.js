@@ -133,6 +133,7 @@ The site's theme can be light or dark, so never hard-code colours: in CSS use va
 
 ### Equations
 Equations must be visible and update live with current values (for example f(x, y) = 1.50x² − 0.80y²). The kit renders LaTeX; don't load KaTeX yourself.
+- Math mode removes spaces, so any words in an equation must be inside \\text{...}: \\text{radius} = 2\\ \\text{cm}. The equation box is for the current formula or calculation, never for a caption.
 - Static: <div class="ml-eq" data-tex="f(x,y) = x^2 + 2y^2"></div>. Inside an HTML attribute a single backslash is correct; escape only " as &quot;.
 - Live or per step: el.dataset.tex = String.raw\`f(\${a.toFixed(2)}) = \${b.toFixed(2)}\`; (it re-renders automatically). Inline math in text: <span data-tex="\\lambda"></span>.
 - Never put LaTeX in a normal JavaScript '...' or "..." string (there '\\nabla' becomes a newline plus "abla"), and never write $...$ in HTML text (it is not rendered).

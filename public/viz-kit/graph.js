@@ -45,6 +45,7 @@
   }
 
   function niceStep(span, count) {
+    if (!Number.isFinite(span) || span <= 0) return 1;
     const raw = span / Math.max(1, count);
     const power = 10 ** Math.floor(Math.log10(raw));
     const scaled = raw / power;
@@ -188,6 +189,7 @@
       ctx.lineWidth = 1;
       const stepX = niceStep(v.x[1] - v.x[0], p.w / 80);
       const stepY = niceStep(v.y[1] - v.y[0], p.h / 50);
+      const maxTicks = 200; // a safety limit, far more than ever fits on screen
       const fmt = (value, step) => {
         const digits = Math.max(0, -Math.floor(Math.log10(step)));
         return Number(value.toFixed(digits)).toString();
@@ -199,7 +201,8 @@
       ctx.strokeStyle = css('grid');
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
-      for (let t = Math.ceil(v.x[0] / stepX) * stepX; t <= v.x[1] + stepX * 0.001; t += stepX) {
+      let drawn = 0;
+      for (let t = Math.ceil(v.x[0] / stepX) * stepX; t <= v.x[1] + stepX * 0.001 && drawn < maxTicks; t += stepX, drawn += 1) {
         const px = toPx(t, 0)[0];
         ctx.beginPath();
         ctx.moveTo(px, p.y);
@@ -209,7 +212,8 @@
       }
       ctx.textAlign = 'right';
       ctx.textBaseline = 'middle';
-      for (let t = Math.ceil(v.y[0] / stepY) * stepY; t <= v.y[1] + stepY * 0.001; t += stepY) {
+      drawn = 0;
+      for (let t = Math.ceil(v.y[0] / stepY) * stepY; t <= v.y[1] + stepY * 0.001 && drawn < maxTicks; t += stepY, drawn += 1) {
         const py = toPx(0, t)[1];
         ctx.beginPath();
         ctx.moveTo(p.x, py);
@@ -410,7 +414,7 @@
             const high = Math.max(...flat);
             const step = niceStep(high - low || 1, opts.count || 8);
             levels = [];
-            for (let z = Math.ceil(low / step) * step; z <= high; z += step) levels.push(Number(z.toFixed(6)));
+            for (let z = Math.ceil(low / step) * step; z <= high && levels.length < 60; z += step) levels.push(Number(z.toFixed(6)));
           }
           setStyle(opts, 1.6);
           const edge = (level, a, b, ax, ay, bx, by) => {
@@ -490,6 +494,10 @@
       return view.x[0] !== home.x[0] || view.x[1] !== home.x[1] || view.y[0] !== home.y[0] || view.y[1] !== home.y[1];
     }
     function zoomAround(factor, cx, cy) {
+      const spanNow = view.x[1] - view.x[0];
+      const spanHome = home.x[1] - home.x[0];
+      if (!Number.isFinite(factor) || factor <= 0) return;
+      if ((factor > 1 && spanNow / factor < spanHome / 5000) || (factor < 1 && spanNow / factor > spanHome * 500)) return;
       const scale = (range, center) => [center + (range[0] - center) / factor, center + (range[1] - center) / factor];
       view = { x: scale(view.x, cx ?? (view.x[0] + view.x[1]) / 2), y: scale(view.y, cy ?? (view.y[0] + view.y[1]) / 2) };
       redraw();
