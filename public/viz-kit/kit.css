@@ -1,0 +1,108 @@
+/* MathLens viz kit: base styles injected into every AI-built visualization (before its own CSS,
+   so the AI can still override anything). Colours come from the theme variables the site injects. */
+
+*, *::before, *::after { box-sizing: border-box; }
+html { color-scheme: inherit; }
+body {
+  margin: 0;
+  padding: 14px;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.5 "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4 { margin: 0 0 8px; line-height: 1.25; font-weight: 600; letter-spacing: -0.005em; }
+h1 { font-size: 19px; } h2 { font-size: 17px; } h3 { font-size: 14.5px; } h4 { font-size: 13px; }
+p { margin: 0 0 8px; }
+canvas, svg { display: block; max-width: 100%; }
+
+/* Controls ------------------------------------------------------------------ */
+button {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 550;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+button:hover { border-color: var(--blue); }
+button:active { transform: translateY(1px); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button.primary, .ml-btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+button.active, button[aria-pressed="true"] { border-color: var(--blue); color: var(--blue); }
+
+select, input[type="number"], input[type="text"] {
+  font: inherit;
+  font-size: 13px;
+  padding: 5px 9px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+}
+select:focus, input:focus { outline: none; border-color: var(--blue); }
+input[type="range"] { accent-color: var(--blue); cursor: pointer; vertical-align: middle; }
+input[type="checkbox"], input[type="radio"] { accent-color: var(--blue); }
+label { font-size: 13px; }
+
+/* Layout helpers -------------------------------------------------------------- */
+.ml-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  min-width: 0;
+}
+.ml-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.ml-toolbar label { display: inline-flex; align-items: center; gap: 6px; }
+.ml-stack { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.ml-row { display: flex; gap: 12px; min-width: 0; }
+.ml-grid-2 { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 12px; }
+.ml-grid-even { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+@media (max-width: 700px) { .ml-grid-2 { grid-template-columns: 1fr; } }
+
+/* Text helpers ---------------------------------------------------------------- */
+.ml-label { font-size: 11px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+.ml-note { font-size: 12.5px; color: var(--muted); }
+.ml-value { font-family: "IBM Plex Mono", ui-monospace, monospace; font-weight: 600; }
+
+/* Equation box: <div class="ml-eq" data-tex="..."></div> --------------------------- */
+.ml-eq {
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  font-size: 17px;
+  text-align: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.ml-eq .katex-display { margin: 0; }
+[data-tex] .katex { font-size: 1.05em; }
+
+/* Live numbers: <div class="ml-stats"><div class="ml-stat"><span>Loss</span><b>0.12</b></div></div> */
+.ml-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
+.ml-stat {
+  padding: 7px 10px;
+  border-radius: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+}
+.ml-stat b { display: block; color: var(--text); font: 600 15px "IBM Plex Mono", ui-monospace, monospace; }
+
+/* Legend: <div class="ml-legend"><span><i style="background:var(--blue)"></i>path</span></div> */
+.ml-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); }
+.ml-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+
+/* Steps: <div class="ml-steps"><button class="active">1. ...</button>...</div> */
+.ml-steps { display: flex; flex-wrap: wrap; gap: 6px; }
+.ml-steps button { border-radius: 999px; padding: 5px 12px; }
+
+/* Plotly: transparent background so it sits on the panel */
+.js-plotly-plot .plotly .main-svg { background: transparent !important; }
