@@ -89,7 +89,7 @@ paymentsRouter.post('/verify', (req, res) => {
   const payment = db.prepare('SELECT * FROM payments WHERE razorpay_order_id = ? AND user_id = ?').get(orderId, req.user.id);
   if (!payment) return res.status(404).json({ error: 'Payment not found.' });
   if (!safeEqualHex(hmacHex(config.razorpayKeySecret, `${orderId}|${paymentId}`), signature)) {
-    return res.status(400).json({ error: 'Payment could not be verified. If money was taken, it will be refunded by Razorpay or credited shortly.' });
+    return res.status(400).json({ error: `Payment could not be verified. If money was taken, please email ${config.supportEmail} with your order ID and we'll look into it.` });
   }
 
   creditOrder(orderId, paymentId);

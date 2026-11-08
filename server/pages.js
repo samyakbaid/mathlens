@@ -154,7 +154,7 @@ pagesRouter.get('/pricing', (req, res) => {
 <li>Every lesson is saved in your notebook. Reopening it, or asking the exact same question again, is free.</li>
 <li>Lessons are written by AI and can contain mistakes, and a mistake doesn't qualify for a refund or credit.</li>
 <li>You pay through Razorpay with UPI, cards or net banking. Prices are in Indian rupees.${config.businessName ? ` Your bank statement may show the payment as ${esc(config.businessName)}, the owner of MathLens.` : ''}</li>
-<li>Credit can't be refunded once you've bought it, except for failed or double payments. See the <a href="/refunds">refund policy</a>.</li>
+<li>Credit can't be refunded once you've bought it. See the <a href="/refunds">refund policy</a>.</li>
 </ul>
 </div>`,
   }));
@@ -199,9 +199,9 @@ ${updated()}
 <h2>2. Your account</h2>
 <p>You need a free account to keep using the tutor after the free tries. Keep your password to yourself, because you're responsible for what happens in your account. Each account is for one person. We may suspend accounts that are used to collect free credit unfairly or to misuse the service.</p>
 <h2>3. Credit and payments</h2>
-<p>Tutor lessons are paid for with prepaid credit, which you buy through our payment partner, Razorpay. Each lesson is charged at its actual cost, as described on the <a href="/pricing">pricing page</a>, and a lesson that fails isn't charged. Credit has no cash value outside MathLens, can't be transferred to another person and doesn't expire. Credit can't be refunded once bought, except as set out in the <a href="/refunds">refund policy</a>. Free lessons and sign-up credit are a gift and may change over time.</p>
+<p>Tutor lessons are paid for with prepaid credit, which you buy through our payment partner, Razorpay. Each lesson is charged at its actual cost, as described on the <a href="/pricing">pricing page</a>. Credit has no cash value outside MathLens, can't be transferred to another person and doesn't expire. Credit can't be refunded once bought. See the <a href="/refunds">refund policy</a>. Free lessons and sign-up credit are a gift and may change over time.</p>
 <h2>4. Lessons are written by AI</h2>
-<p>The tutor's lessons are written by an AI model. They're usually right, but they can contain mistakes. Check important results yourself, especially for exams, assignments or work, and don't use MathLens as the basis for medical, legal or financial decisions. A mistake in a lesson doesn't qualify for a refund or credit. If you have a problem with a lesson, email us. See the <a href="/refunds">refund policy</a>.</p>
+<p>The tutor's lessons are written by an AI model. They're usually right, but they can contain mistakes. Check important results yourself, especially for exams, assignments or work, and don't use MathLens as the basis for medical, legal or financial decisions. A mistake in a lesson doesn't qualify for a refund or credit. If you have a problem, email us and we'll look into it.</p>
 <h2>5. What you send us</h2>
 <p>Your questions and the documents you upload stay yours. Only upload material you have the right to share. We use it to write your lesson, as explained in the <a href="/privacy">privacy policy</a>. Please don't use MathLens to break the law, to harass anyone, or to overload or attack the service.</p>
 <h2>6. Our content</h2>
@@ -276,18 +276,14 @@ ${updated()}
 <div class="legal">
 <h2>Credit you've bought</h2>
 <p>Credit can't be refunded once you've bought it, whether you've used it or not, so please top up only what you expect to use. Your credit doesn't expire, so you can use it whenever you like.</p>
-<h2>Failed or double payments</h2>
-<p>If money left your account but no credit arrived, or you were charged twice, we'll refund it in full. Razorpay often returns failed payments on its own.</p>
-<h2>Lessons that go wrong</h2>
-<p>If you run into a problem with a lesson or your account, email ${email} and we'll look into it.</p>
+<h2>If you have a problem</h2>
+<p>If something goes wrong with a payment, a lesson or your account, email ${email} and we'll look into it. For a payment, include the email address on your account and the order ID from your <a href="/receipts">receipt</a>.</p>
 <h2>Mistakes in AI lessons</h2>
 <p>Lessons are written by AI and can contain mistakes, including wrong explanations, calculations or pictures. A mistake in a lesson doesn't qualify for a refund or credit. If you find one, please tell us so we can improve the tutor, and check anything important yourself.</p>
 <h2>Free lessons</h2>
 <p>Free tries and sign-up lessons have no cash value and can't be exchanged for money.</p>
 <h2>Cancellation</h2>
 <p>There's no subscription, so there's nothing to cancel and nothing will be charged again. To close your account, email us.</p>
-<h2>If a payment failed or you were charged twice</h2>
-<p>Email ${email} with the email address on your account and the order ID from your <a href="/receipts">receipt</a>. Approved refunds go back to the way you paid, through Razorpay, usually within 5 to 7 working days.</p>
 </div>`,
   }));
 });
