@@ -165,7 +165,7 @@ Tips:
 Only **Ask AI** costs money to run, so only it is limited. Built-in topics and Graph Lab stay free and need no account.
 
 1. **Trial:** 3 AI answers without an account (counted per browser, with a per-network daily cap).
-2. **Sign up** (email + password, or Google): 20 more free answers. Free sign-up answers are limited to 3 new accounts per network per day, so they can't be farmed.
+2. **Sign up** (email + password, or Google): 5 more free answers. Free sign-up answers are limited to 3 new accounts per network per day, so they can't be farmed.
 3. **Credits:** after that, people top up any amount from ₹10 with Razorpay (UPI, cards, netbanking). Each answer is charged at **its real AI cost** (tokens × the model's price, converted to ₹) plus 3% to cover Razorpay's fee. With gpt-6-luna an answer costs about ₹0.15–0.20, so ₹10 ≈ 50–60 explanations. The top-up dialog shows the live average.
 
 Failed answers are never charged, and only one question per account runs at a time. All limits and prices are in `.env.example`.
@@ -190,7 +190,7 @@ Razorpay checks these pages before it approves a live account, so they're plain 
 | `/receipt/sample` | a sample receipt (print it to PDF if Razorpay asks for a sample invoice) |
 | `/receipts` | a signed-in person's payments, each with a printable receipt |
 
-Fill in your details in `.env`: `BUSINESS_NAME` (your name or company, as on your Razorpay KYC), `SUPPORT_EMAIL` and `BUSINESS_ADDRESS` are needed. `BUSINESS_PHONE`, `BUSINESS_CITY`, `BUSINESS_GSTIN` (receipts become tax invoices) and `REFUND_DAYS` (default 7) are optional. Until they're set, the pages show a red "set X in .env" marker and the server prints a reminder at startup. The policy text is a starting point. Read it and change `server/pages.js` to match how you actually run things; it isn't legal advice.
+Fill in your details in `.env`: `BUSINESS_NAME` (your name or company, as on your Razorpay KYC), `SUPPORT_EMAIL` and `BUSINESS_ADDRESS` are needed. `BUSINESS_PHONE`, `BUSINESS_CITY`, and `BUSINESS_GSTIN` (receipts become tax invoices) are optional. Until they're set, the pages show a red "set X in .env" marker and the server prints a reminder at startup. The policy text is a starting point. Read it and change `server/pages.js` to match how you actually run things; it isn't legal advice.
 
 **Turn on password reset:** set `SMTP_HOST`, `SMTP_USER` and `SMTP_PASS` in `.env` (see `.env.example`), plus `PUBLIC_URL` once deployed. Links work once, for one hour, and using one logs the account out everywhere else. Without SMTP on your own machine, the link is printed in the server log so you can test it.
 

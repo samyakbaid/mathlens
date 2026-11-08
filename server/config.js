@@ -11,7 +11,7 @@ export const config = {
   /** AI answers someone can get without an account */
   get trialAnswers() { return number('TRIAL_ANSWERS', 3); },
   /** Extra free AI answers when someone signs up */
-  get freeAnswersAfterSignup() { return number('FREE_ANSWERS_AFTER_SIGNUP', 20); },
+  get freeAnswersAfterSignup() { return number('FREE_ANSWERS_AFTER_SIGNUP', 5); },
   /** Anti-abuse: trial answers allowed per IP address per day (shared Wi-Fi gets a few people) */
   get trialPerIpPerDay() { return number('TRIAL_PER_IP_PER_DAY', 10); },
   /** Anti-abuse: new accounts per IP per day that get the free sign-up answers */
@@ -47,8 +47,6 @@ export const config = {
   get businessPhone() { return process.env.BUSINESS_PHONE || ''; },
   get businessCity() { return process.env.BUSINESS_CITY || ''; },
   get businessGstin() { return process.env.BUSINESS_GSTIN || ''; },
-  /** Days after purchase during which unused credit can be refunded */
-  get refundDays() { return number('REFUND_DAYS', 7); },
   get policyUpdated() { return process.env.POLICY_UPDATED || '8 November 2026'; },
 
   /** Set COOKIE_SECURE=true when the site is served over HTTPS */
