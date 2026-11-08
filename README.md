@@ -232,5 +232,34 @@ The site runs on one Ubuntu server, with Cloudflare Tunnel in front. Visitors re
 
 - `deploy/deploy.sh ubuntu@SERVER_IP https://your.site` sets up the server, uploads `.env` with the live settings, and starts the site. Use it again whenever `.env` changes.
 - `deploy/deploy.sh ubuntu@SERVER_IP` sends the latest commit and restarts.
-- The database is at `/var/lib/mathlens` and is backed up daily to `/var/backups/mathlens` (last 14). Those copies are on the same server, so download one regularly: if the server or account is lost, they go too.
+- The database is at `/var/lib/mathlens`. See "Backups" below.
 - The tunnel gives up on a request after about 125 seconds. If a very long lesson hits that, asking again joins the same answer or opens the saved lesson without another charge.
+
+## Backups
+
+Every day the server copies the database, keeps the last 14 copies in `/var/backups/mathlens`, encrypts the new copy and pushes it to the private repo `samyakbaid/mathlens-backups`, which keeps the last 30. If a backup fails, the server emails `SUPPORT_EMAIL`.
+
+**The key:** backups can only be opened with `~/.config/mathlens/backup-key.txt` on your Mac. Keep a second copy in a password manager. Without it, every backup is unreadable. The server only holds the public half, so a hacked server can't read old backups.
+
+**Run a backup now:**
+```
+ssh ubuntu@130.210.7.218 'sudo systemctl start mathlens-backup && sudo journalctl -u mathlens-backup -n 5 --no-pager'
+```
+
+**Get a copy back on your Mac** (doesn't touch the live site):
+```
+deploy/restore-backup.sh
+```
+It decrypts the newest backup to `~/mathlens-restore/mathlens.db` and prints the integrity check and counts. To pick an older one, pass its file name from the `backups/` folder on GitHub. Delete the file when you're done, because it holds customer data.
+
+**Put a backup on the live site** (only after real data loss, because anything newer than the backup is lost):
+```
+scp ~/mathlens-restore/mathlens.db ubuntu@130.210.7.218:/tmp/restore.db
+ssh ubuntu@130.210.7.218
+sudo systemctl stop mathlens
+sudo mv /var/lib/mathlens/mathlens.db /var/lib/mathlens/mathlens.db.before-restore
+sudo rm -f /var/lib/mathlens/mathlens.db-wal /var/lib/mathlens/mathlens.db-shm
+sudo install -o mathlens -g mathlens -m 600 /tmp/restore.db /var/lib/mathlens/mathlens.db
+rm /tmp/restore.db
+sudo systemctl start mathlens
+```

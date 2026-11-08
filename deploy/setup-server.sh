@@ -20,7 +20,7 @@ if [ ! -f /swapfile ]; then
 fi
 
 apt-get update -y
-apt-get install -y curl xz-utils unattended-upgrades libatomic1
+apt-get install -y curl xz-utils unattended-upgrades libatomic1 age git
 systemctl enable --now unattended-upgrades
 
 # Node, checked against the official checksums
@@ -43,5 +43,16 @@ if ! command -v cloudflared >/dev/null; then
   curl -fsSL -o /tmp/cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${DEB_ARCH}.deb
   dpkg -i /tmp/cloudflared.deb
   rm -f /tmp/cloudflared.deb
+fi
+# Off-server backups: a key that can only write to the backups repo, and GitHub's verified host key
+install -d -o mathlens -g mathlens -m 700 /etc/mathlens-backup
+if [ ! -f /etc/mathlens-backup/deploy_key ]; then
+  sudo -u mathlens ssh-keygen -q -t ed25519 -N "" -C mathlens-backup -f /etc/mathlens-backup/deploy_key
+fi
+if [ ! -f /etc/mathlens-backup/known_hosts ]; then
+  ssh-keyscan -t ed25519 github.com 2>/dev/null > /tmp/github_host
+  ssh-keygen -lf /tmp/github_host | grep -q 'SHA256:+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU' || { echo "GitHub host key did not match" >&2; exit 1; }
+  install -o mathlens -g mathlens -m 600 /tmp/github_host /etc/mathlens-backup/known_hosts
+  rm -f /tmp/github_host
 fi
 echo "Server setup finished."

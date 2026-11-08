@@ -8,7 +8,7 @@ export function emailConfigured() {
   return Boolean(config.smtpHost && config.smtpUser && config.smtpPass);
 }
 
-function sendEmail({ to, subject, text, html }) {
+export function sendEmail({ to, subject, text, html }) {
   const transport = nodemailer.createTransport({
     host: config.smtpHost,
     port: config.smtpPort,

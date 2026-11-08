@@ -4,4 +4,6 @@ Description=MathLens database backup
 [Service]
 Type=oneshot
 User=mathlens
+EnvironmentFile=/etc/mathlens.env
+Environment=HOME=/var/lib/mathlens
 ExecStart=/usr/local/bin/node /opt/mathlens/deploy/backup.mjs /var/lib/mathlens/mathlens.db /var/backups/mathlens

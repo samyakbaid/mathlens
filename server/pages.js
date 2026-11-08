@@ -201,7 +201,7 @@ ${updated()}
 <h2>3. Credit and payments</h2>
 <p>Tutor lessons are paid for with prepaid credit, which you buy through our payment partner, Razorpay. Each lesson is charged at its actual cost, as described on the <a href="/pricing">pricing page</a>, and a lesson that fails isn't charged. Credit has no cash value outside MathLens, can't be transferred to another person and doesn't expire. Credit can't be refunded once bought, except as set out in the <a href="/refunds">refund policy</a>. Free lessons and sign-up credit are a gift and may change over time.</p>
 <h2>4. Lessons are written by AI</h2>
-<p>The tutor's lessons are written by an AI model. They're usually right, but they can contain mistakes. Check important results yourself, especially for exams, assignments or work, and don't use MathLens as the basis for medical, legal or financial decisions. A mistake in a lesson doesn't qualify for a refund or credit. Technical faults are covered in the <a href="/refunds">refund policy</a>.</p>
+<p>The tutor's lessons are written by an AI model. They're usually right, but they can contain mistakes. Check important results yourself, especially for exams, assignments or work, and don't use MathLens as the basis for medical, legal or financial decisions. A mistake in a lesson doesn't qualify for a refund or credit. If you have a problem with a lesson, email us. See the <a href="/refunds">refund policy</a>.</p>
 <h2>5. What you send us</h2>
 <p>Your questions and the documents you upload stay yours. Only upload material you have the right to share. We use it to write your lesson, as explained in the <a href="/privacy">privacy policy</a>. Please don't use MathLens to break the law, to harass anyone, or to overload or attack the service.</p>
 <h2>6. Our content</h2>
@@ -279,7 +279,7 @@ ${updated()}
 <h2>Failed or double payments</h2>
 <p>If money left your account but no credit arrived, or you were charged twice, we'll refund it in full. Razorpay often returns failed payments on its own.</p>
 <h2>Lessons that go wrong</h2>
-<p>A lesson that fails to generate is never charged. If a paid lesson has a technical fault, such as a page that won't load or a lesson that's blank or cut off, email us within 7 days and we'll add that lesson's cost back to your account as credit.</p>
+<p>A lesson that fails to generate is never charged. If you run into any other problem with a lesson or your account, email ${email} and we'll look into it.</p>
 <h2>Mistakes in AI lessons</h2>
 <p>Lessons are written by AI and can contain mistakes, including wrong explanations, calculations or pictures. A mistake in a lesson doesn't qualify for a refund or credit. If you find one, please tell us so we can improve the tutor, and check anything important yourself.</p>
 <h2>Free lessons</h2>
