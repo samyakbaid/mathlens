@@ -152,7 +152,7 @@ pagesRouter.get('/pricing', (req, res) => {
 <li>There's no subscription, and nothing renews by itself.</li>
 <li>Your credit doesn't expire.</li>
 <li>Every lesson is saved in your notebook. Reopening it, or asking the exact same question again, is free.</li>
-<li>A lesson that fails to generate is never charged. Lessons are written by AI and can contain mistakes, and a mistake doesn't qualify for a refund or credit.</li>
+<li>Lessons are written by AI and can contain mistakes, and a mistake doesn't qualify for a refund or credit.</li>
 <li>You pay through Razorpay with UPI, cards or net banking. Prices are in Indian rupees.${config.businessName ? ` Your bank statement may show the payment as ${esc(config.businessName)}, the owner of MathLens.` : ''}</li>
 <li>Credit can't be refunded once you've bought it, except for failed or double payments. See the <a href="/refunds">refund policy</a>.</li>
 </ul>
@@ -279,7 +279,7 @@ ${updated()}
 <h2>Failed or double payments</h2>
 <p>If money left your account but no credit arrived, or you were charged twice, we'll refund it in full. Razorpay often returns failed payments on its own.</p>
 <h2>Lessons that go wrong</h2>
-<p>A lesson that fails to generate is never charged. If you run into any other problem with a lesson or your account, email ${email} and we'll look into it.</p>
+<p>If you run into a problem with a lesson or your account, email ${email} and we'll look into it.</p>
 <h2>Mistakes in AI lessons</h2>
 <p>Lessons are written by AI and can contain mistakes, including wrong explanations, calculations or pictures. A mistake in a lesson doesn't qualify for a refund or credit. If you find one, please tell us so we can improve the tutor, and check anything important yourself.</p>
 <h2>Free lessons</h2>
