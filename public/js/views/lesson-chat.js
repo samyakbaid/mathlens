@@ -76,11 +76,17 @@ export function addLessonChat({ rail, card, target, picture }) {
   const hint = el('p', 'chat-hint');
   panel.append(head, thread, form, hint);
 
-  const updateHint = () => {
+  const questionsText = () => {
     const free = getAccount().freeQuestions;
-    const questions = !free ? '' : free.left > 0 ? `Questions are free: ${free.left} of ${free.limit} left today.` : "You've used today's free questions, so each one is now 1 chat.";
-    const allowance = allowanceText();
-    hint.textContent = [questions, 'Changing the picture uses 1 chat.', allowance].filter(Boolean).join(' ');
+    if (!free) return '';
+    const more = `${free.covered} more question${free.covered === 1 ? '' : 's'}`;
+    if (free.left > 0 && free.covered > 0) return `${free.left} of ${free.limit} free questions left today, then your last chat covers ${more}.`;
+    if (free.left > 0) return `${free.left} of ${free.limit} free questions left today. After that, ${free.perChat} questions use 1 chat.`;
+    if (free.covered > 0) return `Your last chat covers ${more}.`;
+    return `No free questions left today. Your next question uses 1 chat, and that covers ${free.perChat} questions.`;
+  };
+  const updateHint = () => {
+    hint.textContent = [questionsText(), 'Changing the picture uses 1 chat.', allowanceText()].filter(Boolean).join(' ');
   };
   const stopWatchingAccount = onAccountChange(updateHint);
   updateHint();

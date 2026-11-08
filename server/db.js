@@ -116,6 +116,14 @@ if (!db.prepare('PRAGMA table_info(usage)').all().some((column) => column.name =
   db.exec("ALTER TABLE usage ADD COLUMN kind TEXT NOT NULL DEFAULT 'lesson'"); // 'lesson' | 'followup'
 }
 
+// How many follow-up questions the last chat still covers (see billing.js)
+for (const table of ['users', 'visitors']) {
+  if (!db.prepare(`PRAGMA table_info(${table})`).all().some((column) => column.name === 'questions_covered')) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN questions_covered INTEGER NOT NULL DEFAULT 0`);
+  }
+}
+db.exec('CREATE INDEX IF NOT EXISTS usage_paid_time ON usage(paid_with, created_at)');
+
 /** Run `fn` inside a transaction: all of its writes happen, or none do. */
 export function transaction(fn) {
   db.exec('BEGIN IMMEDIATE');

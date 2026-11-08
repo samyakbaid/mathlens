@@ -1,15 +1,17 @@
 // Who may ask the AI, and what each answer costs.
 //
-// A "chat" is one message to the tutor: a new lesson, a follow-up question or a change to a picture.
+// A "chat" is a new lesson, a change to a picture, or a set of QUESTIONS_PER_CHAT follow-up questions.
 //
-// Follow-up questions inside a lesson don't use a chat, up to FREE_QUESTIONS_PER_DAY.
+// Follow-up questions inside a lesson are free up to FREE_QUESTIONS_PER_DAY. After that, the first
+// question of a set takes a chat and the rest of the set is kept in questions_covered until it's used.
 //
 // Order of payment for a chat:
 //   anonymous visitor → free trial answers (TRIAL_ANSWERS), then "please log in"
 //   logged-in user    → free sign-up answers, then their prepaid ₹ balance, then "please top up"
 //
-// Credits are charged at the answer's real AI cost (tokens × the model's price) plus a small
-// markup that only covers the payment fee. Failed answers are never charged.
+// A new lesson or picture change is charged to credit at its real AI cost (tokens × the model's
+// price) plus a small markup that only covers the payment fee. A set of questions is charged the
+// average price of a chat. Failed answers are never charged.
 
 import { db, transaction } from './db.js';
 import { config } from './config.js';
@@ -70,6 +72,19 @@ export function averageChargePaise(model) {
 
 const inFlight = new Set(); // one AI request at a time per account / visitor
 
+// Answers still being written aren't in the usage table yet. They're counted here too, or a burst
+// of requests from new visitors would all get past the daily limits before the first one finished.
+const underway = new Map();
+const countUnderway = (key) => underway.get(key) ?? 0;
+function markUnderway(payWith, ip, change) {
+  const keys = payWith === 'question' ? ['question', `question:${ip}`] : payWith === 'trial' ? [`trial:${ip}`] : [];
+  for (const key of keys) {
+    const next = countUnderway(key) + change;
+    if (next > 0) underway.set(key, next);
+    else underway.delete(key);
+  }
+}
+
 function accountKey(req) {
   return req.user ? `u${req.user.id}` : `v${req.visitorId}`;
 }
@@ -81,21 +96,48 @@ export function trialStatus(req) {
 }
 
 function ipTrialsToday(ip) {
-  return db.prepare("SELECT COUNT(*) AS n FROM usage WHERE ip = ? AND paid_with = 'trial' AND created_at > datetime('now', '-1 day')").get(ip).n;
+  return db.prepare("SELECT COUNT(*) AS n FROM usage WHERE ip = ? AND paid_with = 'trial' AND created_at > datetime('now', '-1 day')").get(ip).n + countUnderway(`trial:${ip}`);
 }
 
-/** Follow-up questions this person can still ask today without using a chat. */
+function questionsCovered(req) {
+  const row = req.user
+    ? db.prepare('SELECT questions_covered AS n FROM users WHERE id = ?').get(req.user.id)
+    : db.prepare('SELECT questions_covered AS n FROM visitors WHERE id = ?').get(req.visitorId);
+  return row?.n ?? 0;
+}
+
+function addQuestionsCovered(req, count) {
+  if (req.user) db.prepare('UPDATE users SET questions_covered = questions_covered + ? WHERE id = ?').run(count, req.user.id);
+  else db.prepare('UPDATE visitors SET questions_covered = questions_covered + ? WHERE id = ?').run(count, req.visitorId);
+}
+
+function useCoveredQuestion(req) {
+  const used = req.user
+    ? db.prepare('UPDATE users SET questions_covered = questions_covered - 1 WHERE id = ? AND questions_covered > 0').run(req.user.id)
+    : db.prepare('UPDATE visitors SET questions_covered = questions_covered - 1 WHERE id = ? AND questions_covered > 0').run(req.visitorId);
+  return used.changes > 0;
+}
+
+/** Follow-up questions this person can still ask today for free, and how many their last chat covers. */
 export function freeQuestionsStatus(req) {
   const limit = config.freeQuestionsPerDay;
   const asked = req.user
     ? db.prepare("SELECT COUNT(*) AS n FROM usage WHERE paid_with = 'question' AND (user_id = ? OR visitor_id = ?) AND created_at > datetime('now', '-1 day')").get(req.user.id, req.visitorId).n
     : db.prepare("SELECT COUNT(*) AS n FROM usage WHERE paid_with = 'question' AND visitor_id = ? AND created_at > datetime('now', '-1 day')").get(req.visitorId).n;
   let left = Math.max(0, limit - asked);
-  if (!req.user && left > 0) {
-    const fromNetwork = db.prepare("SELECT COUNT(*) AS n FROM usage WHERE paid_with = 'question' AND user_id IS NULL AND ip = ? AND created_at > datetime('now', '-1 day')").get(req.ip).n;
-    if (fromNetwork >= config.freeQuestionsPerIpPerDay) left = 0;
+  if (left > 0) {
+    const network = db.prepare("SELECT COUNT(*) AS everyone, COUNT(*) - COUNT(user_id) AS visitors FROM usage WHERE paid_with = 'question' AND ip = ? AND created_at > datetime('now', '-1 day')").get(req.ip);
+    const site = db.prepare("SELECT COUNT(*) AS n FROM usage WHERE paid_with = 'question' AND created_at > datetime('now', '-1 day')").get().n;
+    const here = countUnderway(`question:${req.ip}`);
+    if (
+      site + countUnderway('question') >= config.freeQuestionsSitePerDay ||
+      network.everyone + here >= config.freeQuestionsAllPerIpPerDay ||
+      (!req.user && network.visitors + here >= config.freeQuestionsPerIpPerDay)
+    ) {
+      left = 0;
+    }
   }
-  return { limit, left };
+  return { limit, left, covered: questionsCovered(req), perChat: config.questionsPerChat };
 }
 
 /**
@@ -129,26 +171,30 @@ function takeChat(req, model, minimumPaise) {
 
 /**
  * Decide how this request will be paid for and reserve it (a trial or free chat is taken now, and
- * given back by release() if the answer fails). With freeQuestion, a free daily question is used
- * first; if the AI then finds it needs a new picture, upgradeToChat() takes a chat as well.
+ * given back by release() if the answer fails). A question uses a free daily question first, then
+ * one its last chat covers, then a new chat. If the AI then finds it needs a new picture,
+ * upgradeToChat() takes a chat instead.
  * @returns {{ ok: true, payWith, upgradeToChat, release, settle } | { ok: false, status, code, message }}
  */
-export function reserveAnswer(req, model, { minimumPaise, freeQuestion = false } = {}) {
+export function reserveAnswer(req, model, { question = false } = {}) {
   const key = accountKey(req);
   if (inFlight.has(key)) {
     return { ok: false, status: 429, code: 'busy', message: 'Your previous question is still being answered. Wait for it to finish.' };
   }
 
   let payWith = null;
-  if (freeQuestion && freeQuestionsStatus(req).left > 0) {
+  if (question && freeQuestionsStatus(req).left > 0) {
     payWith = 'question';
+  } else if (question && useCoveredQuestion(req)) {
+    payWith = 'covered';
   } else {
-    const chat = takeChat(req, model, minimumPaise);
+    const chat = takeChat(req, model);
     if (!chat.ok) return chat;
     payWith = chat.payWith;
   }
 
   inFlight.add(key);
+  markUnderway(payWith, req.ip, 1);
   let done = false;
 
   return {
@@ -158,20 +204,25 @@ export function reserveAnswer(req, model, { minimumPaise, freeQuestion = false }
     },
     /** This needs a chat after all (it changes a picture). Takes one, or says why it can't. */
     upgradeToChat(minimum) {
-      if (payWith === 'question') {
+      if (payWith === 'question' || payWith === 'covered') {
         const chat = takeChat(req, model, minimum);
         if (!chat.ok) return chat;
+        if (payWith === 'covered') addQuestionsCovered(req, 1);
+        markUnderway(payWith, req.ip, -1);
+        markUnderway(chat.payWith, req.ip, 1);
         payWith = chat.payWith;
       } else if (payWith === 'credits' && req.user.balance_paise < minimum) {
         return takeChat(req, model, minimum);
       }
       return { ok: true };
     },
-    /** The answer failed: give the trial / free answer back. */
+    /** The answer failed: give back whatever it took. */
     release() {
       if (done) return;
       done = true;
       inFlight.delete(key);
+      markUnderway(payWith, req.ip, -1);
+      if (payWith === 'covered') addQuestionsCovered(req, 1);
       if (payWith === 'free') db.prepare('UPDATE users SET free_answers_left = free_answers_left + 1 WHERE id = ?').run(req.user.id);
       if (payWith === 'trial') db.prepare('UPDATE visitors SET trial_used = MAX(0, trial_used - 1) WHERE id = ?').run(req.visitorId);
     },
@@ -180,8 +231,12 @@ export function reserveAnswer(req, model, { minimumPaise, freeQuestion = false }
       if (done) return null;
       done = true;
       inFlight.delete(key);
+      markUnderway(payWith, req.ip, -1);
       const usd = costUsd(usage);
-      const charge = payWith === 'credits' ? chargeForCost(usd) : 0;
+      const isQuestion = usage.kind === 'followup';
+      // This question took a chat, so it starts a new set. A picture change takes a whole chat itself.
+      const startsSet = isQuestion && (payWith === 'free' || payWith === 'trial' || payWith === 'credits');
+      const charge = payWith !== 'credits' ? 0 : isQuestion ? averageChargePaise(model) : chargeForCost(usd);
       transaction(() => {
         db.prepare(`
           INSERT INTO usage (user_id, visitor_id, ip, model, input_tokens, output_tokens, cost_usd, charged_paise, paid_with, kind)
@@ -189,6 +244,7 @@ export function reserveAnswer(req, model, { minimumPaise, freeQuestion = false }
         `).run(req.user?.id ?? null, req.visitorId, req.ip, usage.model, usage.inputTokens, usage.outputTokens, usd, charge, payWith, usage.kind ?? 'lesson');
         // Never below zero: if the last chat costs a little more than the balance, we cover it
         if (charge) db.prepare('UPDATE users SET balance_paise = MAX(0, balance_paise - ?) WHERE id = ?').run(charge, req.user.id);
+        if (startsSet) addQuestionsCovered(req, config.questionsPerChat - 1);
       });
       console.log(`[billing] ${payWith}: ${usage.inputTokens} in + ${usage.outputTokens} out tokens = $${usd.toFixed(5)}${charge ? `, charged ₹${(charge / 100).toFixed(2)}` : ''}`);
       return { paidWith: payWith, chargedPaise: charge, costUsd: usd };

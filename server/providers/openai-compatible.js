@@ -34,8 +34,11 @@ class ProviderHttpError extends Error {
   }
 }
 
-/** Returns { text, usage: { inputTokens, outputTokens, model } }. */
-export async function generate({ system, user, schema, effort }) {
+/**
+ * Returns { text, usage: { inputTokens, outputTokens, model } }. With maxTokens, an answer that runs
+ * out of room comes back with cutOff: true instead of failing.
+ */
+export async function generate({ system, user, schema, effort, maxTokens }) {
   if (!modelName()) {
     throw new UserFacingError(500, 'AI is not set up yet. Set AI_MODEL in .env (for example AI_MODEL=qwen3-coder:30b) and restart the server.');
   }
@@ -46,7 +49,7 @@ export async function generate({ system, user, schema, effort }) {
     type: 'json_schema',
     json_schema: { name: 'mathlens_answer', strict: true, schema },
   };
-  let options = { system, user, responseFormat: strict, includeUsage: true, effort };
+  let options = { system, user, responseFormat: strict, includeUsage: true, effort, maxTokens };
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       return await requestCompletion(options);
@@ -66,11 +69,11 @@ export async function generate({ system, user, schema, effort }) {
   return requestCompletion(options);
 }
 
-async function requestCompletion({ system, user, responseFormat, includeUsage, effort }) {
+async function requestCompletion({ system, user, responseFormat, includeUsage, effort, maxTokens: limit }) {
   const headers = { 'Content-Type': 'application/json' };
   if (process.env.AI_API_KEY) headers.Authorization = `Bearer ${process.env.AI_API_KEY}`;
 
-  const maxTokens = Number(process.env.AI_MAX_TOKENS) || 16384;
+  const maxTokens = limit || Number(process.env.AI_MAX_TOKENS) || 16384;
   const body = {
     model: modelName(),
     // Streaming so the connection stays alive while a slow model writes a long answer.
@@ -87,7 +90,7 @@ async function requestCompletion({ system, user, responseFormat, includeUsage, e
   if (isOpenAI()) {
     // OpenAI's reasoning models want max_completion_tokens and only the default temperature.
     // The limit also covers hidden reasoning tokens, so give it more room.
-    body.max_completion_tokens = Number(process.env.AI_MAX_TOKENS) || 32000;
+    body.max_completion_tokens = limit || Number(process.env.AI_MAX_TOKENS) || 32000;
   } else {
     body.max_tokens = maxTokens;
     body.temperature = 0.4;
@@ -107,7 +110,7 @@ async function requestCompletion({ system, user, responseFormat, includeUsage, e
 
   const { text, finishReason, usage } = await readStream(response.body);
 
-  if (finishReason === 'length') {
+  if (finishReason === 'length' && !limit) {
     throw new UserFacingError(502, 'The answer was too long and got cut off. Try a more specific question, or raise AI_MAX_TOKENS (and the model\'s context length).');
   }
   if (finishReason === 'content_filter') {
@@ -115,6 +118,7 @@ async function requestCompletion({ system, user, responseFormat, includeUsage, e
   }
   return {
     text,
+    cutOff: finishReason === 'length',
     usage: {
       model: modelName(),
       // If the server didn't report usage, estimate it (about 4 characters per token)

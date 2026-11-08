@@ -343,7 +343,7 @@ export async function openCreditsDialog({ reason = '' } = {}) {
     // Why it's worth it, in real numbers
     const reasons = el('ul', 'worth-it');
     for (const text of [
-      `₹20 covers about ${answersFor(2000)} chats, roughly the price of a cup of chai. A chat is a new lesson or a change to a picture, and follow-up questions are free up to ${getAccount().freeQuestions?.limit ?? 10} a day.`,
+      `₹20 covers about ${answersFor(2000)} chats, roughly the price of a cup of chai. A chat is a new lesson, a change to a picture, or a set of ${getAccount().freeQuestions?.perChat ?? 4} follow-up questions. Your first ${getAccount().freeQuestions?.limit ?? 4} questions each day are free.`,
       'Every lesson is saved in your notebook, and reopening it costs nothing.',
       "There's no subscription. You pay once and your credit never runs out.",
     ]) {

@@ -4,8 +4,8 @@
 // database, so a browser can't swap in other content. A built-in lesson's text only exists in the
 // browser, so it's sent with the question, limited in size, and treated as material to explain.
 //
-// A question is free, up to FREE_QUESTIONS_PER_DAY, and after that it's one chat at its real cost.
-// Changing a picture always uses a chat. Asking the same thing about the same step again returns
+// A question is free, up to FREE_QUESTIONS_PER_DAY. After that, every QUESTIONS_PER_CHAT questions
+// use one chat (see billing.js). Changing a picture always uses a chat. Asking the same thing about the same step again returns
 // the saved reply for free.
 
 import express from 'express';
@@ -18,11 +18,12 @@ import { normalizeQuestion, owner } from './lessons.js';
 
 const MAX_QUESTION = 1000;
 const MAX_HISTORY = 4; // earlier exchanges the AI sees
-const MAX_TOPIC_STEPS = 20;
-const MAX_STEP_TEXT = 3000;
-// A question costs far less than a lesson, so a small balance can still pay for one.
-// Changing a picture costs more, so it needs a little more.
-const MINIMUM_BALANCE_PAISE = 15;
+// A built-in lesson's text comes from the browser, so it's limited to a little more than the biggest
+// real lesson (10 steps of under 400 characters). Anything longer would only run up the AI bill.
+const MAX_TOPIC_STEPS = 12;
+const MAX_STEP_TITLE = 120;
+const MAX_STEP_TEXT = 600;
+// Changing a picture costs less than a new lesson, so a smaller balance can pay for one.
 const MINIMUM_PICTURE_BALANCE_PAISE = 35;
 const TOPIC_ID = /^[a-z0-9-]{1,80}$/;
 
@@ -81,7 +82,7 @@ followupsRouter.post('/', async (req, res) => {
     target.lesson = {
       title: clean(body.title, 200),
       intro: '',
-      steps: steps.map((step) => ({ title: clean(step?.title, 200), explanation: clean(step?.text, MAX_STEP_TEXT) })),
+      steps: steps.map((step) => ({ title: clean(step?.title, MAX_STEP_TITLE), explanation: clean(step?.text, MAX_STEP_TEXT) })),
       builtIn: true,
     };
     if (!target.lesson.steps.length) return res.status(400).json({ error: 'This lesson has no steps to ask about.' });
@@ -108,7 +109,7 @@ followupsRouter.post('/', async (req, res) => {
     return res.status(status).json({ error: message });
   }
 
-  const ticket = reserveAnswer(req, model, { minimumPaise: MINIMUM_BALANCE_PAISE, freeQuestion: true });
+  const ticket = reserveAnswer(req, model, { question: true });
   if (!ticket.ok) return res.status(ticket.status).json({ error: ticket.message, code: ticket.code });
 
   // The picture the reader is looking at now: the original, or one of their changed versions
@@ -129,7 +130,7 @@ followupsRouter.post('/', async (req, res) => {
     const usage = { ...answer.usage };
     let visualizationHtml = '';
     if (answer.changePicture) {
-      // A question was free. Changing the picture uses a chat, so take one before doing the work.
+      // Changing the picture uses a chat of its own, so take one before doing the work.
       const chat = ticket.upgradeToChat(MINIMUM_PICTURE_BALANCE_PAISE);
       if (!chat.ok) {
         ticket.release();

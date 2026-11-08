@@ -20,13 +20,16 @@ export function setupProblem() {
   return process.env.ANTHROPIC_API_KEY ? null : 'ANTHROPIC_API_KEY is not set';
 }
 
-/** Returns { text, usage: { inputTokens, outputTokens, model } }. */
-export async function generate({ system, user, schema, effort }) {
+/**
+ * Returns { text, usage: { inputTokens, outputTokens, model } }. With maxTokens, an answer that runs
+ * out of room comes back with cutOff: true instead of failing.
+ */
+export async function generate({ system, user, schema, effort, maxTokens }) {
   // Streaming keeps long generations (a full HTML visualization) from hitting HTTP timeouts.
   // `fallbacks: "default"` lets the API retry on a fallback model if the main one declines.
   const stream = getClient().beta.messages.stream({
     model: modelName(),
-    max_tokens: 32000,
+    max_tokens: maxTokens || 32000,
     betas: ['server-side-fallback-2026-07-01'],
     fallbacks: 'default',
     output_config: {
@@ -42,7 +45,7 @@ export async function generate({ system, user, schema, effort }) {
   if (message.stop_reason === 'refusal') {
     throw new UserFacingError(422, 'The AI declined to answer this question. Try rephrasing it.');
   }
-  if (message.stop_reason === 'max_tokens') {
+  if (message.stop_reason === 'max_tokens' && !maxTokens) {
     throw new UserFacingError(502, 'The answer was too long and got cut off. Try a more specific question.');
   }
 
@@ -53,6 +56,7 @@ export async function generate({ system, user, schema, effort }) {
   const u = message.usage ?? {};
   return {
     text,
+    cutOff: message.stop_reason === 'max_tokens',
     usage: {
       model: message.model ?? modelName(),
       inputTokens: (u.input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0),

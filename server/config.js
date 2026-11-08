@@ -14,9 +14,15 @@ export const config = {
   get freeAnswersAfterSignup() { return number('FREE_ANSWERS_AFTER_SIGNUP', 3); },
   /** Anti-abuse: trial answers allowed per IP address per day (shared Wi-Fi gets a few people) */
   /** Follow-up questions inside a lesson that don't use a chat, per person per day */
-  get freeQuestionsPerDay() { return number('FREE_QUESTIONS_PER_DAY', 10); },
-  /** The same for everyone without an account on one network, so clearing cookies doesn't reset it */
-  get freeQuestionsPerIpPerDay() { return number('FREE_QUESTIONS_PER_IP_PER_DAY', 30); },
+  get freeQuestionsPerDay() { return number('FREE_QUESTIONS_PER_DAY', 4); },
+  /** After the free ones, this many questions count as one chat */
+  get questionsPerChat() { return Math.max(1, number('QUESTIONS_PER_CHAT', 4)); },
+  /** Free questions a day for everyone without an account on one network, so clearing cookies doesn't reset it */
+  get freeQuestionsPerIpPerDay() { return number('FREE_QUESTIONS_PER_IP_PER_DAY', 12); },
+  /** Free questions a day for everyone on one network, so making many accounts doesn't get around it */
+  get freeQuestionsAllPerIpPerDay() { return number('FREE_QUESTIONS_ALL_PER_IP_PER_DAY', 40); },
+  /** Free questions a day across the whole site, which caps what they can ever cost */
+  get freeQuestionsSitePerDay() { return number('FREE_QUESTIONS_SITE_PER_DAY', 300); },
   get trialPerIpPerDay() { return number('TRIAL_PER_IP_PER_DAY', 10); },
   /** Anti-abuse: new accounts per IP per day that get the free sign-up answers */
   get freeSignupsPerIpPerDay() { return number('FREE_SIGNUPS_PER_IP_PER_DAY', 3); },

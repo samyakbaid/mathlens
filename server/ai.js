@@ -158,15 +158,57 @@ function describeLesson(lesson, stepIndex) {
  * doesn't carry the picture's code. It also says whether the reader wants the picture changed.
  * @returns {Promise<{reply: string, changePicture: boolean, pictureRequest: string, usage: object}>}
  */
+// Replies to questions are short. This limit also covers the model's hidden thinking, and it stops
+// something like "write 20,000 words" from costing many times what a question should.
+const QUESTION_MAX_TOKENS = 2000;
+
+/** The readable part of a reply that ran out of room: whole sentences and whole formulas only. */
+function replyFromCutOff(text) {
+  const start = /"reply"\s*:\s*"/.exec(text);
+  if (!start) return '';
+  const from = start.index + start[0].length;
+  let end = from;
+  while (end < text.length && text[end] !== '"') {
+    const size = text[end] !== '\\' ? 1 : text[end + 1] === 'u' ? 6 : 2;
+    if (end + size > text.length) break; // the text stopped part-way through an escape
+    end += size;
+  }
+  let reply = '';
+  try {
+    reply = restoreLostBackslashes(JSON.parse(`"${text.slice(from, end)}"`));
+  } catch {
+    return '';
+  }
+  const whole = (part) => (part.match(/(?<!\\)\$/g) ?? []).length % 2 === 0 && part.lastIndexOf('[[') <= part.lastIndexOf(']]');
+  const stops = [...reply.matchAll(/[.?!](?=\s|$)|\n\n/g)].map((match) => match.index + match[0].length);
+  for (const stop of stops.reverse()) {
+    const part = reply.slice(0, stop).trim();
+    if (whole(part)) return part;
+  }
+  return '';
+}
+
 export async function answerFollowUp({ lesson, stepIndex, question, history }) {
   const provider = getProvider();
   const earlier = history.length ? `Earlier in this chat:\n${history.map((turn) => `Reader: ${turn.question}\nYou: ${turn.reply}`).join('\n\n')}\n\n` : '';
-  const { text, usage } = await provider.generate({
+  const { text, usage, cutOff } = await provider.generate({
     system: FOLLOW_UP_PROMPT,
     user: `${describeLesson(lesson, stepIndex)}\n\n${earlier}The reader is on step ${stepIndex + 1} of ${lesson.steps.length} and says:\n${question}`,
     schema: FOLLOW_UP_SCHEMA,
     effort: process.env.AI_CHAT_EFFORT || undefined,
+    maxTokens: QUESTION_MAX_TOKENS,
   });
+  // The AI bill for this is already spent, so it counts as a question like any other. Otherwise
+  // asking for something huge, again and again, would cost money and never reach a limit.
+  if (cutOff) {
+    const partial = replyFromCutOff(text);
+    return {
+      reply: partial ? `${partial}\n\nThat was getting long, so I stopped here. Ask me to carry on if you'd like the rest.` : "That's too big for me to answer here. Try asking about one smaller part of it, or ask for it as a new lesson.",
+      changePicture: false,
+      pictureRequest: '',
+      usage,
+    };
+  }
   const parsed = parseJsonLoosely(text);
   const reply = typeof parsed.reply === 'string' ? restoreLostBackslashes(parsed.reply).trim() : '';
   if (!reply) throw new SyntaxError('Model output is missing the reply');

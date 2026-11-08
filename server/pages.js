@@ -146,11 +146,11 @@ pagesRouter.get('/pricing', (req, res) => {
 <table class="price-table"><thead><tr><th>Top up</th><th>At today's average</th></tr></thead><tbody>${rows}</tbody></table>
 <p>₹20 is about the price of a cup of chai, and it covers about ${lessonsFor(2000)} chats.</p>
 <h2>What's a chat?</h2>
-<p>A chat is a question that gets you a new lesson, or a request to change how a lesson's picture works. Asking something you've already asked, or reopening a saved lesson, doesn't use a chat.</p>
-<h2>Follow-up questions are free</h2>
-<p>Inside any lesson you can ask up to ${config.freeQuestionsPerDay} follow-up questions a day without using a chat. After that, each question is one chat, and it usually costs only a few paise.</p>
+<p>A chat is a question that gets you a new lesson, a request to change how a lesson's picture works, or a set of ${config.questionsPerChat} follow-up questions. Asking something you've already asked, or reopening a saved lesson, doesn't use a chat.</p>
+<h2>Follow-up questions</h2>
+<p>Inside any lesson, your first ${config.freeQuestionsPerDay} follow-up questions each day are free. After that, every ${config.questionsPerChat} questions count as one chat. The chat is used when you ask the first of them, and the rest stay ready for whenever you want them. On a shared network or a very busy day, the free ones can run out sooner.</p>
 <h2>How the price is worked out</h2>
-<p>Each chat costs what the AI charges us to write the answer${config.markup ? `, plus ${Math.round(config.markup * 100)}% to cover the payment fee` : ''}. The figures above are based on a new lesson, the biggest kind of chat. A change to a picture or an extra question costs less, so your money often goes further, and a long lesson can cost a little more. The average above updates as people use MathLens.</p>
+<p>A new lesson or a change to a picture costs what the AI charges us to write it${config.markup ? `, plus ${Math.round(config.markup * 100)}% to cover the payment fee` : ''}. The figures above are based on a new lesson, the biggest kind of chat. A change to a picture usually costs less, so your money often goes further, and a long lesson can cost a little more. A set of ${config.questionsPerChat} follow-up questions costs the average price shown above. That average updates as people use MathLens.</p>
 <h2>Good to know</h2>
 <ul>
 <li>There's no subscription, and nothing renews by itself.</li>
@@ -203,7 +203,7 @@ ${updated()}
 <h2>2. Your account</h2>
 <p>You need a free account to keep using the tutor after the free chats. Keep your password to yourself, because you're responsible for what happens in your account. Each account is for one person. We may suspend accounts that are used to collect free credit unfairly or to misuse the service.</p>
 <h2>3. Credit and payments</h2>
-<p>Chats with the tutor (a new lesson, a change to a picture, or a follow-up question beyond the free daily limit) are paid for with prepaid credit, which you buy through our payment partner, Razorpay. Each chat is charged at its actual cost, as described on the <a href="/pricing">pricing page</a>. Credit has no cash value outside MathLens, can't be transferred to another person and doesn't expire. Credit can't be refunded once bought. See the <a href="/refunds">refund policy</a>. Free chats, free questions and sign-up credit are a gift and may change over time.</p>
+<p>Chats with the tutor (a new lesson, a change to a picture, or a set of ${config.questionsPerChat} follow-up questions beyond the free daily limit) are paid for with prepaid credit, which you buy through our payment partner, Razorpay. A new lesson or a change to a picture is charged at its actual cost. A set of follow-up questions is charged at the average price of a chat when you ask the first question in the set. The <a href="/pricing">pricing page</a> explains both. Credit has no cash value outside MathLens, can't be transferred to another person and doesn't expire. Credit can't be refunded once bought. See the <a href="/refunds">refund policy</a>. Free chats, free questions and sign-up credit are a gift and may change over time.</p>
 <h2>4. Lessons are written by AI</h2>
 <p>The tutor's lessons are written by an AI model. They're usually right, but they can contain mistakes. Check important results yourself, especially for exams, assignments or work, and don't use MathLens as the basis for medical, legal or financial decisions. A mistake in a lesson doesn't qualify for a refund or credit. If you have a problem, email us and we'll look into it.</p>
 <h2>5. What you send us</h2>
