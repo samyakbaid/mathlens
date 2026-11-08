@@ -389,6 +389,7 @@ export async function openCreditsDialog({ reason = '' } = {}) {
     const pay = el('button', 'btn primary modal-submit');
     pay.type = 'button';
     const { businessName } = getAccount().integrations ?? {};
+    cost.append(" Lessons are written by AI and can contain mistakes. Credit can't be refunded once bought.");
     if (businessName) cost.append(` Your bank statement may show this payment as ${businessName}, the owner of MathLens.`);
     dialog.append(title, subtitle, reasons, grid, customRow, summary, error, pay, cost);
 
