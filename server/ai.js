@@ -6,6 +6,7 @@
 import { SYSTEM_PROMPT } from './prompt.js';
 import { UserFacingError } from './errors.js';
 import { repairLatexInScripts } from './latex-repair.js';
+import { checkScripts, compileError, replaceScript } from './viz-check.js';
 import * as anthropic from './providers/anthropic.js';
 import * as openaiCompatible from './providers/openai-compatible.js';
 
@@ -84,7 +85,47 @@ export async function explainConcept(question, builtInTopics, { documentText = '
   const system = provider === anthropic ? SYSTEM_PROMPT : SYSTEM_PROMPT + JSON_FORMAT_REMINDER;
 
   const { text, usage } = await provider.generate({ system, user, schema: RESPONSE_SCHEMA });
-  return { answer: normalizeAnswer(parseJsonLoosely(text)), usage };
+  const answer = normalizeAnswer(parseJsonLoosely(text));
+  const repairUsage = await repairPicture(provider, answer);
+  if (repairUsage) {
+    usage.inputTokens += repairUsage.inputTokens;
+    usage.outputTokens += repairUsage.outputTokens;
+  }
+  return { answer, usage };
+}
+
+const SCRIPT_FIX_SCHEMA = {
+  type: 'object',
+  properties: { script: { type: 'string' } },
+  required: ['script'],
+  additionalProperties: false,
+};
+
+/**
+ * Make sure the picture's code at least compiles. Known slips are fixed locally. Anything else goes
+ * back to the model once, and if it's still broken the lesson fails, so nobody pays for a blank picture.
+ */
+async function repairPicture(provider, answer) {
+  const checked = checkScripts(answer.visualizationHtml);
+  answer.visualizationHtml = checked.html;
+  if (!checked.broken.length) return null;
+
+  const total = { inputTokens: 0, outputTokens: 0 };
+  for (const { code, error } of checked.broken) {
+    console.warn('[ai] picture script does not compile, asking for a fix:', error);
+    const { text, usage } = await provider.generate({
+      system: `You fix syntax errors in JavaScript. Change as little as possible and keep the behaviour the same. In a normal JavaScript string, a prime is written as an escaped quote, like 'f\\'(x)', and a LaTeX backslash is doubled. Reply with one JSON object: {"script": "the corrected code"}. Give the code only, without <script> tags or code fences.`,
+      user: `The browser reports: ${error}\n\nThe script:\n${code}`,
+      schema: SCRIPT_FIX_SCHEMA,
+    });
+    total.inputTokens += usage.inputTokens;
+    total.outputTokens += usage.outputTokens;
+    const fixed = String(parseJsonLoosely(text).script ?? '');
+    const remaining = compileError(fixed);
+    if (!fixed || remaining) throw new SyntaxError(`The picture's code could not be repaired: ${remaining ?? 'empty reply'}`);
+    answer.visualizationHtml = replaceScript(answer.visualizationHtml, code, fixed);
+  }
+  return total;
 }
 
 /** Parse JSON even if the model wrapped it in ```json fences, <think> tags or extra prose. */
@@ -116,7 +157,7 @@ function normalizeAnswer(raw) {
           visualFocus: str(step.visualFocus),
         }))
         .filter((step) => step.explanation)
-        .slice(0, 10)
+        .slice(0, 12)
     : [];
   // Older or sloppier answers: one long explanation instead of steps
   if (!steps.length && str(raw.explanation)) {

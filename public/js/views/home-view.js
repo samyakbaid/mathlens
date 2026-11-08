@@ -33,7 +33,7 @@ export function showHome(view) {
       </section>
       <div class="continue-slot"></div>
       <a class="price-strip" href="/pricing">
-        <span><strong>Free to start.</strong> The lessons and Graph Lab are always free. The tutor gives you <b data-fill="trial">3</b> free lessons, then <b data-fill="free">5</b> more when you sign up.</span>
+        <span><strong>Free to start.</strong> The lessons and Graph Lab are always free. The tutor gives you <b data-fill="trial">2</b> free lessons, then <b data-fill="free">3</b> more when you sign up.</span>
         <span class="price-strip-cta">After that, about <b data-fill="average">₹0.20</b> a lesson ${icon('right', 14)}</span>
       </a>
       <section class="paths-section">

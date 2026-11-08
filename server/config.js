@@ -9,9 +9,9 @@ const number = (name, fallback) => {
 export const config = {
   // Free use
   /** AI answers someone can get without an account */
-  get trialAnswers() { return number('TRIAL_ANSWERS', 3); },
+  get trialAnswers() { return number('TRIAL_ANSWERS', 2); },
   /** Extra free AI answers when someone signs up */
-  get freeAnswersAfterSignup() { return number('FREE_ANSWERS_AFTER_SIGNUP', 5); },
+  get freeAnswersAfterSignup() { return number('FREE_ANSWERS_AFTER_SIGNUP', 3); },
   /** Anti-abuse: trial answers allowed per IP address per day (shared Wi-Fi gets a few people) */
   get trialPerIpPerDay() { return number('TRIAL_PER_IP_PER_DAY', 10); },
   /** Anti-abuse: new accounts per IP per day that get the free sign-up answers */

@@ -23,6 +23,7 @@ const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(import.meta.dirname, '..', 'public');
 const MAX_QUESTION_LENGTH = 2000;
 
+const KEEP_ALIVE_MS = Number(process.env.KEEP_ALIVE_MS) || 20000;
 const MAX_DOCUMENT_CHARS = 120000; // about 30k tokens: plenty for a paper, and still cheap
 
 // Answers still being written, per account and question. A reload while waiting joins the same
@@ -152,15 +153,31 @@ app.post('/api/ask', async (req, res) => {
   work.catch(() => {}); // handled below; don't let the shared copy crash the server
   inFlight.set(`${account}|${key}`, work);
 
+  // Cloudflare gives up after about 125 seconds of silence. A slow lesson sends harmless spaces
+  // (JSON allows them before the object) so the connection stays open while it's being written.
+  let keepingAlive = false;
+  const keepAlive = setInterval(() => {
+    if (!keepingAlive) {
+      keepingAlive = true;
+      res.status(200).type('application/json');
+    }
+    res.write(' ');
+  }, KEEP_ALIVE_MS);
+  const finish = (status, body) => {
+    clearInterval(keepAlive);
+    if (keepingAlive) return res.end(JSON.stringify({ ...body, httpStatus: status }));
+    return res.status(status).json(body);
+  };
+
   try {
     const { answer, billing, lessonId } = await work;
     console.log(`[ask] done in ${((Date.now() - started) / 1000).toFixed(1)}s`);
-    res.json({ ...answer, lessonId, billing: { ...billing, user: publicUser(currentUser()), trial: trialStatus(req) } });
+    finish(200, { ...answer, lessonId, billing: { ...billing, user: publicUser(currentUser()), trial: trialStatus(req) } });
   } catch (err) {
     ticket.release(); // failed answers are free
     console.error('[ask] failed:', err);
     const { status, message } = describeError(err);
-    res.status(status).json({ error: message });
+    finish(status, { error: message });
   } finally {
     inFlight.delete(`${account}|${key}`);
   }

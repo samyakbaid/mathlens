@@ -47,14 +47,17 @@ export function chargeForCost(usd) {
   return Math.max(1, Math.ceil(usd * config.usdToInr * (1 + config.markup) * 100));
 }
 
+const TYPICAL_INPUT_TOKENS = 5000;
+const TYPICAL_OUTPUT_TOKENS = 9500;
+
 /**
  * Average charge per answer over the last 200 answers, in paise. Before there is any history,
  * estimate from the configured model's price and a typical answer size.
  */
 export function averageChargePaise(model) {
-  const { avg, n } = db.prepare('SELECT AVG(cost_usd) AS avg, COUNT(*) AS n FROM (SELECT cost_usd FROM usage ORDER BY id DESC LIMIT 200)').get();
+  const { avg, n } = db.prepare('SELECT AVG(cost_usd) AS avg, COUNT(*) AS n FROM (SELECT cost_usd FROM usage WHERE model = ? ORDER BY id DESC LIMIT 200)').get(model);
   if (n >= 5 && avg > 0) return chargeForCost(avg);
-  return chargeForCost(costUsd({ model, inputTokens: 2500, outputTokens: 9000 }));
+  return chargeForCost(costUsd({ model, inputTokens: TYPICAL_INPUT_TOKENS, outputTokens: TYPICAL_OUTPUT_TOKENS }));
 }
 
 // ---- Allowance -------------------------------------------------------------------------

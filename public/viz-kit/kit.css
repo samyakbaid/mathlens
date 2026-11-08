@@ -5,7 +5,7 @@
 html { color-scheme: inherit; }
 body {
   margin: 0;
-  padding: 14px;
+  padding: 10px;
   background: var(--bg);
   color: var(--text);
   font: 14px/1.5 "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -106,3 +106,49 @@ label { font-size: 13px; }
 
 /* Plotly: transparent background so it sits on the panel */
 .js-plotly-plot .plotly .main-svg { background: transparent !important; }
+
+/* A page that fills the frame exactly: <div class="ml-page"> ... <div class="ml-main"> ... */
+.ml-page { display: flex; flex-direction: column; gap: 8px; height: calc(100vh - 20px); min-height: 0; }
+.ml-page > * { flex: none; min-width: 0; }
+.ml-page > .ml-main { flex: 1 1 0; min-height: 0; }
+.ml-main.ml-grid-2, .ml-main.ml-grid-even { grid-auto-rows: minmax(0, 1fr); }
+.ml-page > .ml-main:not(.ml-grid-2):not(.ml-grid-even) { display: flex; flex-direction: column; gap: 8px; }
+.ml-page > .ml-main:not(.ml-grid-2):not(.ml-grid-even) > * { flex: 1 1 0; min-height: 0; }
+.ml-main > .ml-panel { min-height: 0; overflow: auto; }
+.ml-panel:has(> .ml-graph, > .ml-plot, > .js-plotly-plot) { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+.ml-panel > .ml-graph, .ml-panel > .ml-plot, .ml-panel > .js-plotly-plot { flex: 1 1 0; height: auto; min-height: 0; }
+.ml-panel > .ml-stats, .ml-panel > .ml-legend, .ml-panel > .ml-note { flex: none; padding: 6px 8px; }
+.ml-plot { width: 100%; height: 100%; min-height: 0; }
+.ml-side { display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow-y: auto; }
+@media (max-width: 700px), (max-height: 380px) {
+  .ml-page { height: auto; }
+  .ml-page > .ml-main { flex: none; min-height: 300px; }
+  .ml-main.ml-grid-2, .ml-main.ml-grid-even { grid-auto-rows: minmax(280px, auto); }
+}
+
+/* MathLens.graph: the canvas fills its box */
+.ml-graph { position: relative; width: 100%; height: 100%; min-height: 160px; overflow: hidden; user-select: none; -webkit-user-select: none; }
+.ml-graph > canvas { position: absolute; inset: 0; display: block; max-width: none; }
+
+/* Zoom buttons */
+.ml-zoom { position: absolute; top: 8px; right: 8px; z-index: 5; display: flex; gap: 2px; padding: 2px; border-radius: 9px; background: var(--bg); border: 1px solid var(--border); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.14); }
+.ml-zoom.floating { top: 0; right: auto; left: 0; z-index: 40; }
+.ml-zoom[hidden] { display: none; }
+.ml-zoom button { min-width: 30px; height: 28px; padding: 0 8px; border: 0; border-radius: 7px; background: transparent; font-size: 16px; font-weight: 600; line-height: 1; }
+.ml-zoom button:last-child { font-size: 12px; font-weight: 550; }
+.ml-zoom button:hover { background: var(--panel); }
+
+/* Visible scrollbars: first-time readers shouldn't have to guess that something scrolls */
+html::-webkit-scrollbar, .ml-side::-webkit-scrollbar, .ml-eq::-webkit-scrollbar, .ml-panel::-webkit-scrollbar { width: 11px; height: 11px; }
+html::-webkit-scrollbar-thumb, .ml-side::-webkit-scrollbar-thumb, .ml-eq::-webkit-scrollbar-thumb, .ml-panel::-webkit-scrollbar-thumb { background: var(--muted); border-radius: 8px; border: 3px solid var(--bg); }
+html::-webkit-scrollbar-track, .ml-side::-webkit-scrollbar-track, .ml-eq::-webkit-scrollbar-track, .ml-panel::-webkit-scrollbar-track { background: var(--bg); }
+.ml-scroll-hint { position: fixed; left: 50%; bottom: 10px; z-index: 50; transform: translateX(-50%); border-radius: 999px; padding: 6px 14px; background: var(--text); border-color: var(--text); color: var(--bg); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25); }
+.ml-scroll-hint:hover { border-color: var(--text); }
+.ml-scroll-hint[hidden] { display: none; }
+
+/* Formula pieces in the same colour as the thing they describe: \htmlClass{c-orange}{2x} */
+.c-blue { color: var(--blue); } .c-orange { color: var(--orange); } .c-green { color: var(--green); } .c-red { color: var(--red); }
+.c-purple { color: var(--purple); } .c-yellow { color: var(--yellow); } .c-cyan { color: var(--cyan); } .c-pink { color: var(--pink); }
+
+.ml-eq:empty { display: none; }
+.ml-crash { margin-bottom: 10px; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--red); background: var(--panel); font-size: 14px; }

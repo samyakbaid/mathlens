@@ -16,10 +16,10 @@ import { findTopic } from '../topics.js';
 import { bringIntoView } from './topic-view.js';
 
 // The viz kit (base styles, equation helper, step protocol) goes into every visualization.
-let kit = { css: '', js: '' };
-const kitReady = Promise.all(['viz-kit/kit.css', 'viz-kit/kit.js'].map((url) => fetch(url).then((r) => (r.ok ? r.text() : '')).catch(() => '')))
-  .then(([css, js]) => {
-    kit = { css, js };
+let kit = { css: '', js: '', graph: '' };
+const kitReady = Promise.all(['viz-kit/kit.css', 'viz-kit/kit.js', 'viz-kit/graph.js'].map((url) => fetch(url).then((r) => (r.ok ? r.text() : '')).catch(() => '')))
+  .then(([css, js, graph]) => {
+    kit = { css, js, graph };
   });
 
 const VIZ_FONTS = 'https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap';
@@ -49,13 +49,34 @@ export async function showLesson(container, answer, { kicker, note } = {}) {
   // "allow-scripts" without "allow-same-origin" means it can't touch this page, cookies or storage.
   const lessonCard = el('section', 'lesson fit');
   const stage = el('div', 'lesson-stage');
+  const stageMore = el('button', 'scroll-more', 'More of this picture below');
+  stageMore.type = 'button';
+  stageMore.hidden = true;
+  stageMore.insertAdjacentHTML('beforeend', icon('down', 14));
+  stageMore.addEventListener('click', () => stage.scrollBy({ top: stage.clientHeight * 0.7, behavior: 'smooth' }));
   const frame = el('iframe', 'ai-frame');
   frame.setAttribute('sandbox', 'allow-scripts');
   frame.title = `Interactive visualization: ${answer.title}`;
   frame.srcdoc = withTheme(answer.visualizationHtml, { stepCount: steps.length, step: 0 });
-  stage.append(frame);
+  stage.append(frame, stageMore);
+  const markStage = () => {
+    const overflowing = window.matchMedia('(min-width: 721px) and (min-height: 560px)').matches && frame.getBoundingClientRect().height > stage.clientHeight - 20;
+    stageMore.hidden = !overflowing || stage.scrollTop + stage.clientHeight >= stage.scrollHeight - 8;
+    stage.classList.toggle('overflowing', overflowing);
+  };
+  stage.addEventListener('scroll', markStage, { passive: true });
+  const stageWatcher = new ResizeObserver(markStage);
+  stageWatcher.observe(stage);
+  stageWatcher.observe(frame);
   const rail = el('div', 'lesson-rail');
-  lessonCard.append(stage, rail);
+  const grip = el('div', 'lesson-grip');
+  grip.title = 'Drag to make the picture or the text bigger';
+  grip.setAttribute('role', 'separator');
+  grip.setAttribute('aria-orientation', 'horizontal');
+  grip.setAttribute('aria-label', 'Resize the picture and the text');
+  grip.tabIndex = 0;
+  lessonCard.append(stage, grip, rail);
+  makeResizable(grip, lessonCard, frame);
 
   const sendStep = (index) => frame.contentWindow?.postMessage({ type: 'mathlens:step', index, count: steps.length }, '*');
   const lesson = addSteps(
@@ -88,7 +109,7 @@ export async function showLesson(container, answer, { kicker, note } = {}) {
   transcript.append(el('summary', '', 'Read all the steps on one page'));
   const all = el('div', 'explanation');
   all.innerHTML = steps
-    .map((step, i) => `<h3>${i + 1}. ${escapeHtml(step.title)}</h3>${renderMarkdown(step.explanation)}${step.visualFocus ? `<p class="muted">${escapeHtml(step.visualFocus)}</p>` : ''}`)
+    .map((step, i) => `<h3>${i + 1}. ${escapeHtml(step.title)}</h3>${renderMarkdown(step.explanation)}${step.visualFocus ? `<div class="muted">${renderMarkdown(step.visualFocus)}</div>` : ''}`)
     .join('');
   transcript.append(all);
 
@@ -97,6 +118,23 @@ export async function showLesson(container, answer, { kicker, note } = {}) {
   lesson.go(0);
   lessonCard.addEventListener('lessonstep', (event) => {
     if (event.detail.byReader) bringIntoView(lessonCard);
+  });
+
+  // Hovering (or tapping) a coloured phrase in the text lights up the same thing in the picture
+  const sendHighlight = (color) => frame.contentWindow?.postMessage({ type: 'mathlens:highlight', color }, '*');
+  let tappedRef = null;
+  lessonCard.addEventListener('pointerover', (event) => {
+    const ref = event.target.closest?.('.ml-ref');
+    if (ref && event.pointerType === 'mouse') sendHighlight(ref.dataset.ref);
+  });
+  lessonCard.addEventListener('pointerout', (event) => {
+    if (event.target.closest?.('.ml-ref') && event.pointerType === 'mouse') sendHighlight(null);
+  });
+  lessonCard.addEventListener('click', (event) => {
+    const ref = event.target.closest?.('.ml-ref');
+    if (!ref || !matchMedia('(hover: none)').matches) return;
+    tappedRef = tappedRef === ref ? null : ref;
+    sendHighlight(tappedRef ? ref.dataset.ref : null);
   });
 
   const onMessage = (event) => {
@@ -117,7 +155,45 @@ export async function showLesson(container, answer, { kicker, note } = {}) {
   return () => {
     window.removeEventListener('message', onMessage);
     stopWatchingTheme();
+    stageWatcher.disconnect();
   };
+}
+
+/** Dragging the handle moves the line between the picture and the text. */
+function makeResizable(grip, card, frame) {
+  const setHeight = (height) => {
+    const box = card.getBoundingClientRect();
+    const track = card.querySelector('.rail-track')?.getBoundingClientRect().height ?? 60;
+    const limited = Math.max(150, Math.min(box.height - track - 170, height));
+    card.style.setProperty('--rail-card-height', `${Math.round(limited)}px`);
+    frame.style.height = ''; // the picture refits itself to the new space
+    frame.dataset.resizes = '0';
+  };
+  const current = () => card.querySelector('.rail-card')?.getBoundingClientRect().height ?? 260;
+  let startY = 0;
+  let startHeight = 0;
+  grip.addEventListener('pointerdown', (event) => {
+    grip.setPointerCapture(event.pointerId);
+    grip.classList.add('dragging');
+    startY = event.clientY;
+    startHeight = current();
+  });
+  grip.addEventListener('pointermove', (event) => {
+    if (grip.hasPointerCapture(event.pointerId)) setHeight(startHeight + startY - event.clientY);
+  });
+  const stop = () => grip.classList.remove('dragging');
+  grip.addEventListener('pointerup', stop);
+  grip.addEventListener('pointercancel', stop);
+  grip.addEventListener('dblclick', () => {
+    card.style.removeProperty('--rail-card-height');
+    frame.style.height = '';
+  });
+  grip.addEventListener('keydown', (event) => {
+    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+    event.preventDefault();
+    event.stopPropagation();
+    setHeight(current() + (event.key === 'ArrowUp' ? 30 : -30));
+  });
 }
 
 /** Grow the frame for real overflow (never below the stage), and stop after a few changes so
@@ -141,6 +217,7 @@ function withTheme(html, { stepCount = 0, step = 0 } = {}) {
     `<style id="mathlens-theme">${themeCss()}\n${kit.css}</style>`,
     `<script>window.MATHLENS_STEP_COUNT = ${Number(stepCount) || 0}; window.MATHLENS_INITIAL_STEP = ${Number(step) || 0};</script>`,
     `<script>${kit.js.replace(/<\/script/gi, '<\\/script')}</script>`,
+    `<script>${kit.graph.replace(/<\/script/gi, '<\\/script')}</script>`,
   ].join('');
   if (/<head(\s[^>]*)?>/i.test(html)) return html.replace(/<head(\s[^>]*)?>/i, (tag) => tag + head);
   if (/<html[^>]*>/i.test(html)) return html.replace(/<html[^>]*>/i, (tag) => `${tag}<head>${head}</head>`);

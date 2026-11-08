@@ -164,9 +164,9 @@ Tips:
 
 Only **Ask AI** costs money to run, so only it is limited. Built-in topics and Graph Lab stay free and need no account.
 
-1. **Trial:** 3 AI answers without an account (counted per browser, with a per-network daily cap).
-2. **Sign up** (email + password, or Google): 5 more free answers. Free sign-up answers are limited to 3 new accounts per network per day, so they can't be farmed.
-3. **Credits:** after that, people top up any amount from ₹10 with Razorpay (UPI, cards, netbanking). Each answer is charged at **its real AI cost** (tokens × the model's price, converted to ₹) plus 3% to cover Razorpay's fee. With gpt-6-luna an answer costs about ₹0.15–0.20, so ₹10 ≈ 50–60 explanations. The top-up dialog shows the live average.
+1. **Trial:** 2 AI answers without an account (counted per browser, with a per-network daily cap).
+2. **Sign up** (email + password, or Google): 3 more free answers. Free sign-up answers are limited to 3 new accounts per network per day, so they can't be farmed.
+3. **Credits:** after that, people top up any amount from ₹10 with Razorpay (UPI, cards, netbanking). Each answer is charged at **its real AI cost** (tokens × the model's price, converted to ₹) plus 3% to cover Razorpay's fee. With gpt-6-luna on medium reasoning effort a lesson costs about ₹0.50, so ₹10 ≈ 20 lessons. The top-up dialog shows the live average.
 
 Failed answers are never charged, and only one question per account runs at a time. All limits and prices are in `.env.example`.
 
@@ -263,3 +263,14 @@ sudo install -o mathlens -g mathlens -m 600 /tmp/restore.db /var/lib/mathlens/ma
 rm /tmp/restore.db
 sudo systemctl start mathlens
 ```
+
+## How AI lessons are built
+
+The AI writes one running example worked by hand, and only then the formula (the method is in `server/prompt.js`). The page adds these around whatever it writes, so saved lessons get most of them without being rewritten:
+
+- `public/viz-kit/graph.js`: `MathLens.graph`, a 2D graph that zooms, moves and keeps labels on the exact point they name, plus zoom buttons for Plotly charts and any other canvas or SVG.
+- Coloured phrases: `[[orange:the tangent line]]` in a step's text shows a dot and underline in that colour, and hovering lights up that colour in the picture.
+- `server/viz-check.js`: every lesson's scripts must compile before it's saved. Known slips are fixed locally, others go back to the AI once, and if it's still broken the lesson fails and isn't charged.
+- If a lesson takes over 20 seconds, the server sends spaces to keep the connection open, because Cloudflare gives up after about 125 seconds of silence.
+
+To compare models, set `AI_MODEL` and `AI_REASONING_EFFORT`. Prices live in `server/billing.js`, and customers are charged each lesson's real cost, so the displayed average follows the model.

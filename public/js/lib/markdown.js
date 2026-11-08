@@ -1,6 +1,7 @@
 // Renders Markdown that contains LaTeX math.
 //   Inline math:  $a^2 + b^2$   or  \( ... \)
 //   Display math: $$\int_0^1 x\,dx$$  or  \[ ... \]
+//   A phrase tied to something in the picture: [[orange:the tangent line]]
 //
 // How it works: math is cut out and replaced with placeholders first, so the Markdown
 // parser can't mangle backslashes or underscores. Then the Markdown is converted and
@@ -8,6 +9,13 @@
 // Uses the globals `marked`, `DOMPurify` and `katex` loaded in index.html.
 
 const MATH_PATTERN = /\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]|\\\(([\s\S]+?)\\\)|\$([^$\n]+?)\$/g;
+
+const REF_PATTERN = /\[\[(blue|orange|green|red|purple|yellow|cyan|pink):([^\]\n]+)\]\]/g;
+
+/** One line of Markdown, without the surrounding paragraph. */
+export function renderMarkdownInline(markdown) {
+  return renderMarkdown(markdown).replace(/^\s*<p>/, '').replace(/<\/p>\s*$/, '');
+}
 
 export function renderMarkdown(markdown) {
   const mathHtml = [];
@@ -19,7 +27,8 @@ export function renderMarkdown(markdown) {
     return `MATHPLACEHOLDER${mathHtml.length - 1}END`;
   });
 
-  const html = DOMPurify.sanitize(marked.parse(withPlaceholders));
+  const withRefs = withPlaceholders.replace(REF_PATTERN, (_, color, words) => `<span class="ml-ref" data-ref="${color}" style="--ref: var(--c-${color})">${words}</span>`);
+  const html = DOMPurify.sanitize(marked.parse(withRefs));
   return html.replace(/MATHPLACEHOLDER(\d+)END/g, (_, index) => mathHtml[Number(index)]);
 }
 

@@ -6,6 +6,7 @@ const PATHS = {
   pause: '<path d="M5 3.5v9M11 3.5v9" stroke-width="2.2"/>',
   left: '<path d="M10 3.5 5.5 8l4.5 4.5"/>',
   right: '<path d="M6 3.5 10.5 8 6 12.5"/>',
+  down: '<path d="M3.5 6 8 10.5 12.5 6"/>',
   restart: '<path d="M3 8a5 5 0 1 0 1.5-3.6"/><path d="M3 3v3h3"/>',
   swap: '<path d="M3 5.5h9.5M10 3l2.5 2.5L10 8M13 10.5H3.5M6 8l-2.5 2.5L6 13"/>',
   search: '<circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3 3"/>',

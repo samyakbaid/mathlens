@@ -17,10 +17,12 @@ export async function askAI(question, topics, signal, document = null) {
   });
 
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const error = new Error(data.error || `Server error (${response.status})`);
+  // A slow answer is sent with status 200 to keep the connection open, so its real status is in the body
+  const status = data.httpStatus ?? response.status;
+  if (!response.ok || status >= 400 || data.error) {
+    const error = new Error(data.error || `Server error (${status})`);
     error.code = data.code; // 'login_required' | 'payment_required' | 'busy'
-    error.status = response.status;
+    error.status = status;
     throw error;
   }
   return data;

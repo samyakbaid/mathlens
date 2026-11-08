@@ -162,7 +162,7 @@ export function showAskPage(view, { question = '', autoSubmit = false } = {}) {
     const box = el('div', 'thinking');
     const line = el('div', 'thinking-line');
     const label = el('p', 'thinking-label', `${messages[0]}…`);
-    const note = el('p', 'thinking-note', documentFile ? 'Papers take a little longer, usually under a minute.' : 'This usually takes 20 to 60 seconds.');
+    const note = el('p', 'thinking-note', documentFile ? 'Papers take a little longer, usually a couple of minutes.' : 'This usually takes about a minute, sometimes two.');
     box.append(line, label, note);
     result.replaceChildren(box);
     clearInterval(thinkingTimer);

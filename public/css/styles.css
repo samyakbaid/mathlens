@@ -508,6 +508,7 @@ kbd {
 .lesson-stage { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 14px; }
 .lesson-rail { border-top: 1.5px solid var(--border); background: var(--surface-2); }
 .lesson-rail:empty { display: none; }
+.lesson-grip { display: none; }
 
 /* Step rail: numbered timeline + the current step */
 .rail-track {
@@ -577,8 +578,41 @@ kbd {
 .rail-body p { margin: 0 0 10px; }
 .rail-body .katex-display { margin: 12px 0; overflow-x: auto; overflow-y: hidden; padding: 2px 0; }
 .rail-body ul, .rail-body ol { margin: 0 0 10px; padding-left: 22px; }
-/* When a step's text is longer than its box, fade the bottom edge to show it scrolls */
-.rail-body.overflowing:not(.at-end) { -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 36px), transparent); }
+.rail-body:focus { outline: none; }
+/* A phrase tied to something in the picture: the dot and underline match its colour there */
+.ml-ref { font-weight: 600; border-bottom: 3px solid var(--ref); padding: 0 1px; cursor: help; white-space: nowrap; }
+@media (max-width: 560px) { .ml-ref { white-space: normal; } }
+.ml-ref::before { content: ""; display: inline-block; width: 0.62em; height: 0.62em; margin-right: 0.32em; border-radius: 50%; background: var(--ref); vertical-align: 0.04em; }
+.ml-ref:hover { background: var(--accent-soft); }
+/* Says out loud that something scrolls. Mac browsers hide scrollbars, so first-time readers can't tell. */
+.scroll-more {
+  position: sticky;
+  bottom: 6px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  margin: 8px auto 0;
+  padding: 6px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--primary-text);
+  font: 600 13px var(--sans);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+}
+.scroll-more[hidden] { display: none; }
+.scroll-more:hover { transform: translateY(1px); }
+.lesson-stage > .scroll-more { align-self: center; margin-top: -48px; }
+/* Scrollbars that stay visible on every system */
+.rail-body::-webkit-scrollbar, .lesson-stage::-webkit-scrollbar { width: 12px; }
+.rail-body::-webkit-scrollbar-thumb, .lesson-stage::-webkit-scrollbar-thumb { background: var(--faint); border-radius: 8px; border: 3px solid var(--surface-2); }
+.rail-body::-webkit-scrollbar-track, .lesson-stage::-webkit-scrollbar-track { background: var(--surface-2); border-radius: 8px; }
+@supports not selector(::-webkit-scrollbar) {
+  .rail-body, .lesson-stage { scrollbar-width: auto; scrollbar-color: var(--faint) var(--surface-2); }
+}
 .rail-focus {
   display: flex;
   align-items: flex-start;
@@ -616,7 +650,19 @@ kbd {
   .lesson.fit .lesson-stage:has(.ai-frame) { overflow-y: auto; overscroll-behavior: contain; }
   .lesson.fit .ai-frame { flex: none; height: 100%; min-height: 100%; }
   .lesson.fit .lesson-rail { flex: none; }
-  .lesson.fit .rail-card { height: clamp(210px, 31vh, 330px); }
+  .lesson.fit .rail-card { height: var(--rail-card-height, clamp(215px, 31vh, 370px)); }
+  .lesson.fit .lesson-stage:has(.ai-frame) { padding: 4px 6px; }
+  .lesson-grip { flex: none; display: block; height: 12px; margin-bottom: -1px; background: var(--surface-2); border-top: 1.5px solid var(--border); cursor: row-resize; touch-action: none; position: relative; }
+  .lesson-grip::after { content: ""; position: absolute; left: 50%; top: 3px; width: 46px; height: 4px; margin-left: -23px; border-radius: 4px; background: var(--faint); }
+  .lesson-grip:hover::after, .lesson-grip.dragging::after, .lesson-grip:focus-visible::after { background: var(--accent); }
+  .lesson-grip:focus { outline: none; }
+  .lesson.fit .lesson-grip + .lesson-rail { border-top: 0; }
+  .lesson.fit .rail-body { min-height: 0; overflow-y: auto; padding-right: 8px; }
+}
+@media (min-width: 721px) and (min-height: 560px) and (max-width: 899px) {
+  .lesson.fit .rail-card { display: flex; flex-direction: column; }
+  .lesson.fit .rail-body { flex: 1 1 0; }
+  .lesson.fit .rail-focus, .lesson.fit .rail-nav { flex: none; }
 }
 /* Short screens (most laptops): numbers only in the timeline, so the visual gets more room */
 @media (min-width: 721px) and (max-height: 880px) {
@@ -644,6 +690,19 @@ kbd {
   .rail-focus { grid-area: focus; margin-top: 10px; }
   .rail-nav { grid-area: nav; justify-content: flex-start; margin-top: 10px; align-self: end; }
   .rail-label { -webkit-line-clamp: 1; }
+}
+
+/* Very wide screens: "Look for" moves beside the text, so the explanation gets the full height */
+@media (min-width: 1200px) {
+  .rail-card {
+    grid-template-columns: minmax(170px, 210px) minmax(0, 76ch) minmax(190px, 1fr);
+    grid-template-areas:
+      "meta  body focus"
+      "title body focus"
+      ".     body focus"
+      "nav   body focus";
+  }
+  .rail-focus { align-self: start; margin-top: 0; max-width: 340px; }
 }
 
 /* Instruments: the topic's controls, as cards in a row */

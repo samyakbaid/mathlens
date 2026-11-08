@@ -2,7 +2,7 @@
 // Each function appends to `panel` and returns something you can read or update later.
 
 import { el } from './dom.js';
-import { renderMath, renderMarkdown } from './markdown.js';
+import { renderMath, renderMarkdown, renderMarkdownInline } from './markdown.js';
 import { parse, formulaToTex } from './expression.js';
 import { icon } from './icons.js';
 
@@ -327,6 +327,14 @@ export function addSteps(container, steps, { onChange } = {}) {
   const meta = el('div', 'rail-meta');
   const title = el('h3', 'rail-title');
   const body = el('div', 'rail-body');
+  const bodyText = el('div', 'rail-text');
+  const bodyMore = el('button', 'scroll-more', 'Scroll to read more');
+  bodyMore.type = 'button';
+  bodyMore.hidden = true;
+  bodyMore.insertAdjacentHTML('beforeend', icon('down', 14));
+  bodyMore.addEventListener('click', () => body.scrollBy({ top: body.clientHeight * 0.7, behavior: 'smooth' }));
+  body.append(bodyText, bodyMore);
+  body.tabIndex = 0; // the keyboard can scroll it too
   const focus = el('p', 'rail-focus');
   const nav = el('div', 'rail-nav');
   const back = el('button', 'btn');
@@ -347,13 +355,16 @@ export function addSteps(container, steps, { onChange } = {}) {
     const step = steps[index];
     meta.textContent = `Step ${index + 1} of ${steps.length}`;
     title.textContent = step.title;
-    body.innerHTML = renderMarkdown(step.text);
+    bodyText.innerHTML = renderMarkdown(step.text);
     body.scrollTop = 0;
     requestAnimationFrame(markOverflow);
     focus.replaceChildren();
     if (step.focus) {
       focus.innerHTML = icon('eye');
-      focus.append(el('strong', '', 'Look for '), document.createTextNode(step.focus));
+      const words = el('span');
+      words.innerHTML = renderMarkdownInline(step.focus);
+      words.prepend(el('strong', '', 'Look for '));
+      focus.append(words);
     }
     back.disabled = index === 0;
     const last = index === steps.length - 1;
@@ -375,13 +386,17 @@ export function addSteps(container, steps, { onChange } = {}) {
   back.addEventListener('click', () => go(index - 1));
   next.addEventListener('click', () => go(index === steps.length - 1 ? 0 : index + 1));
 
-  // Long step text scrolls inside its box; fade the bottom edge until you reach the end
+  // Long step text scrolls inside its box. Say so plainly, until the reader reaches the end.
   function markOverflow() {
-    body.classList.toggle('overflowing', body.scrollHeight > body.clientHeight + 2);
-    body.classList.toggle('at-end', body.scrollTop + body.clientHeight >= body.scrollHeight - 2);
+    const scrollable = getComputedStyle(body).overflowY !== 'visible';
+    const overflowing = scrollable && bodyText.scrollHeight > body.clientHeight + 4;
+    body.classList.toggle('overflowing', overflowing);
+    bodyMore.hidden = !overflowing || body.scrollTop + body.clientHeight >= body.scrollHeight - 6;
   }
   body.addEventListener('scroll', markOverflow, { passive: true });
-  new ResizeObserver(markOverflow).observe(body);
+  const watcher = new ResizeObserver(markOverflow);
+  watcher.observe(body);
+  watcher.observe(bodyText);
 
   // ← / → move through the steps (unless you're typing somewhere). Removes itself with the page.
   const onKey = (event) => {
