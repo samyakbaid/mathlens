@@ -87,6 +87,7 @@ app.get('/api/me', (req, res) => {
     },
     integrations: {
       googleClientId: config.googleClientId || null,
+      businessName: config.businessName || null,
       payments: paymentsEnabled(),
     },
   });

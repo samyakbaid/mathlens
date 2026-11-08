@@ -153,7 +153,7 @@ pagesRouter.get('/pricing', (req, res) => {
 <li>Your credit doesn't expire.</li>
 <li>Every lesson is saved in your notebook. Reopening it, or asking the exact same question again, is free.</li>
 <li>A lesson that fails is never charged.</li>
-<li>You pay through Razorpay with UPI, cards or net banking. Prices are in Indian rupees.</li>
+<li>You pay through Razorpay with UPI, cards or net banking. Prices are in Indian rupees.${config.businessName ? ` Your bank statement may show the payment as ${esc(config.businessName)}, the owner of MathLens.` : ''}</li>
 <li>Unused credit can be refunded within ${config.refundDays} days of buying it. See the <a href="/refunds">refund policy</a>.</li>
 </ul>
 </div>`,
@@ -334,7 +334,7 @@ ${sample ? '<p class="sample-banner">Sample receipt. This is what customers rece
     ${payment.razorpay_payment_id ? `<dt>Payment ID</dt><dd>${esc(payment.razorpay_payment_id)}</dd>` : ''}
     <dt>Status</dt><dd>Paid. The credit was added to the account at the time of payment.</dd>
   </dl>
-  <p class="receipt-note">Questions about this payment: ${config.supportEmail ? esc(config.supportEmail) : detail('', 'SUPPORT_EMAIL')}. Refunds follow the policy at /refunds.</p>
+  <p class="receipt-note">Questions about this payment: ${config.supportEmail ? esc(config.supportEmail) : detail('', 'SUPPORT_EMAIL')}. Refunds follow the policy at /refunds.${config.businessName ? ` Your bank statement may show the payment as ${esc(config.businessName)}, the owner of MathLens.` : ''}</p>
   <button class="btn small no-print" type="button" onclick="window.print()">Print or save as PDF</button>
 </article>`;
 }

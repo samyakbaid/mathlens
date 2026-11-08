@@ -388,6 +388,8 @@ export async function openCreditsDialog({ reason = '' } = {}) {
     const error = el('div', 'modal-error');
     const pay = el('button', 'btn primary modal-submit');
     pay.type = 'button';
+    const { businessName } = getAccount().integrations ?? {};
+    if (businessName) cost.append(` Your bank statement may show this payment as ${businessName}, the owner of MathLens.`);
     dialog.append(title, subtitle, reasons, grid, customRow, summary, error, pay, cost);
 
     function update() {
