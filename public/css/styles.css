@@ -1252,6 +1252,10 @@ kbd {
 .modal-field input:focus { outline: none; border-color: var(--accent); }
 .modal-error { color: var(--danger); font-size: 13px; }
 .modal-error:empty { display: none; }
+.modal-notice { padding: 10px 12px; border-radius: 10px; background: var(--accent-soft, var(--surface)); color: var(--text); font-size: 13.5px; }
+.modal-notice:empty { display: none; }
+.modal-forgot { align-self: flex-start; font-size: 13px; font-weight: 500; }
+.modal-forgot[hidden], .modal-field[hidden], .modal-divider[hidden], .google-button[hidden] { display: none; }
 .modal-submit { width: 100%; padding: 11px; margin-top: 4px; font-size: 15px; }
 .modal-switch { margin: 16px 0 0; text-align: center; font-size: 13.5px; color: var(--muted); }
 .link-button { padding: 0; border: 0; background: none; color: var(--accent); font: inherit; font-weight: 600; cursor: pointer; }

@@ -43,6 +43,7 @@ mathlens/
 │   ├── billing.js                free trial → free sign-up answers → paid credits; per-answer cost
 │   ├── payments.js               Razorpay top-ups (order, signature check, webhook)
 │   ├── lessons.js                the notebook: saved lessons, matching repeat and similar questions
+│   ├── email.js                  sends password reset links over SMTP
 │   ├── pages.js                  /about, /pricing, /contact, /terms, /privacy, /refunds, /delivery, receipts
 │   ├── ai.js                     picks the AI provider; parses and checks the lesson (intro + steps)
 │   ├── latex-repair.js           fixes LaTeX backslashes the AI gets wrong in its JavaScript
@@ -190,6 +191,8 @@ Razorpay checks these pages before it approves a live account, so they're plain 
 | `/receipts` | a signed-in person's payments, each with a printable receipt |
 
 Fill in your details in `.env`: `BUSINESS_NAME` (your name or company, as on your Razorpay KYC), `SUPPORT_EMAIL` and `BUSINESS_ADDRESS` are needed. `BUSINESS_PHONE`, `BUSINESS_CITY`, `BUSINESS_GSTIN` (receipts become tax invoices) and `REFUND_DAYS` (default 7) are optional. Until they're set, the pages show a red "set X in .env" marker and the server prints a reminder at startup. The policy text is a starting point. Read it and change `server/pages.js` to match how you actually run things; it isn't legal advice.
+
+**Turn on password reset:** set `SMTP_HOST`, `SMTP_USER` and `SMTP_PASS` in `.env` (see `.env.example`), plus `PUBLIC_URL` once deployed. Links work once, for one hour, and using one logs the account out everywhere else. Without SMTP on your own machine, the link is printed in the server log so you can test it.
 
 **Data:** everything is stored in `data/mathlens.db` (git-ignored). Passwords are hashed with scrypt; session cookies are HttpOnly. Back this file up once real people pay.
 

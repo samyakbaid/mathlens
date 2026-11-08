@@ -31,6 +31,15 @@ export const config = {
   get razorpayKeySecret() { return process.env.RAZORPAY_KEY_SECRET || ''; },
   get razorpayWebhookSecret() { return process.env.RAZORPAY_WEBHOOK_SECRET || ''; },
 
+  // Sending email (password reset links)
+  get smtpHost() { return process.env.SMTP_HOST || ''; },
+  get smtpPort() { return number('SMTP_PORT', 465); },
+  get smtpUser() { return process.env.SMTP_USER || ''; },
+  get smtpPass() { return process.env.SMTP_PASS || ''; },
+  get mailFrom() { return process.env.MAIL_FROM || ''; },
+  /** The site's real address, e.g. https://mathlens.in. Links in emails are built from this. */
+  get publicUrl() { return process.env.PUBLIC_URL || ''; },
+
   // Business details shown on the policy pages, contact page and receipts (Razorpay checks these)
   get businessName() { return process.env.BUSINESS_NAME || ''; },
   get supportEmail() { return process.env.SUPPORT_EMAIL || ''; },
@@ -40,7 +49,7 @@ export const config = {
   get businessGstin() { return process.env.BUSINESS_GSTIN || ''; },
   /** Days after purchase during which unused credit can be refunded */
   get refundDays() { return number('REFUND_DAYS', 7); },
-  get policyUpdated() { return process.env.POLICY_UPDATED || '5 November 2026'; },
+  get policyUpdated() { return process.env.POLICY_UPDATED || '8 November 2026'; },
 
   /** Set COOKIE_SECURE=true when the site is served over HTTPS */
   get cookieSecure() { return process.env.COOKIE_SECURE === 'true'; },

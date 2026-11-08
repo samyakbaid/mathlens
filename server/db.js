@@ -74,6 +74,14 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS lessons_user ON lessons(user_id, question_key);
   CREATE INDEX IF NOT EXISTS lessons_visitor ON lessons(visitor_id, question_key);
 
+  -- Password reset links: only the hash is stored, and a row is deleted as soon as it's used
+  CREATE TABLE IF NOT EXISTS password_resets (
+    token_hash TEXT PRIMARY KEY,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    expires_at TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
   CREATE TABLE IF NOT EXISTS payments (
     id                  INTEGER PRIMARY KEY,
     user_id             INTEGER NOT NULL REFERENCES users(id),
@@ -99,5 +107,8 @@ export function transaction(fn) {
   }
 }
 
-// Remove expired sessions now and then
-setInterval(() => db.prepare("DELETE FROM sessions WHERE expires_at < datetime('now')").run(), 6 * 3600 * 1000).unref();
+// Remove expired sessions and reset links now and then
+setInterval(() => {
+  db.prepare("DELETE FROM sessions WHERE expires_at < datetime('now')").run();
+  db.prepare("DELETE FROM password_resets WHERE expires_at < datetime('now')").run();
+}, 6 * 3600 * 1000).unref();

@@ -4,7 +4,7 @@ import { el } from '../lib/dom.js';
 import { icon } from '../lib/icons.js';
 import { getTheme } from '../lib/theme.js';
 import {
-  getAccount, onAccountChange, refreshAccount, signup, login, loginWithGoogle, logout,
+  getAccount, onAccountChange, refreshAccount, signup, login, loginWithGoogle, logout, requestPasswordReset, resetPassword,
   createTopupOrder, verifyTopup, rupees, answersFor,
 } from '../lib/account.js';
 
@@ -127,7 +127,7 @@ function loadScript(src) {
 
 /**
  * Opens the log in / sign up dialog.
- * @param {{mode?: 'login'|'signup', reason?: string}} options - reason explains why we're asking
+ * @param {{mode?: 'login'|'signup'|'forgot', reason?: string}} options - reason explains why we're asking
  * @returns {Promise<boolean>} true once the person is logged in
  */
 export function openAuthDialog({ mode = 'signup', reason = '' } = {}) {
@@ -145,15 +145,50 @@ export function openAuthDialog({ mode = 'signup', reason = '' } = {}) {
     const nameField = field('Name', 'text', 'name', 'Your name (optional)');
     const emailField = field('Email', 'email', 'email', 'you@example.com');
     const passwordField = field('Password', 'password', 'current-password', 'At least 8 characters');
+    const forgot = el('button', 'link-button modal-forgot', 'Forgot your password?');
+    forgot.type = 'button';
+    forgot.addEventListener('click', () => {
+      currentMode = 'forgot';
+      reason = '';
+      error.textContent = '';
+      render();
+      emailField.input.focus();
+    });
+    const notice = el('div', 'modal-notice');
     const error = el('div', 'modal-error');
     const submit = el('button', 'btn primary modal-submit');
     submit.type = 'submit';
     const switcher = el('p', 'modal-switch');
-    form.append(nameField.row, emailField.row, passwordField.row, error, submit);
+    form.append(nameField.row, emailField.row, passwordField.row, forgot, notice, error, submit);
     dialog.append(title, subtitle, google, divider, form, switcher);
 
+    const hasGoogle = Boolean(integrations?.googleClientId);
     const render = () => {
       const isSignup = currentMode === 'signup';
+      const isForgot = currentMode === 'forgot';
+      notice.textContent = '';
+      google.hidden = isForgot || !hasGoogle;
+      divider.hidden = isForgot || !hasGoogle;
+      passwordField.row.hidden = isForgot;
+      passwordField.input.required = !isForgot;
+      forgot.hidden = currentMode !== 'login';
+      if (isForgot) {
+        nameField.row.hidden = true;
+        title.textContent = 'Reset your password';
+        subtitle.textContent = reason || "Enter your account's email and we'll send you a link to choose a new password.";
+        submit.textContent = 'Email me a link';
+        switcher.replaceChildren();
+        const back = el('button', 'link-button', 'Back to log in');
+        back.type = 'button';
+        back.addEventListener('click', () => {
+          currentMode = 'login';
+          reason = '';
+          error.textContent = '';
+          render();
+        });
+        switcher.append(back);
+        return;
+      }
       title.textContent = isSignup ? 'Make a free account' : 'Welcome back';
       const perk = pricing?.freeAnswersAfterSignup ? `Sign up and your next ${pricing.freeAnswersAfterSignup} lessons are free. Your saved lessons come with you.` : '';
       subtitle.textContent = reason || (isSignup ? perk : 'Log in to keep asking the tutor and see your saved lessons.');
@@ -180,7 +215,14 @@ export function openAuthDialog({ mode = 'signup', reason = '' } = {}) {
       event.preventDefault();
       error.textContent = '';
       submit.disabled = true;
+      notice.textContent = '';
       try {
+        if (currentMode === 'forgot') {
+          const address = emailField.input.value.trim();
+          await requestPasswordReset(address);
+          notice.textContent = `If ${address} has a MathLens account, a reset link is on its way. It works for one hour, and it may land in your spam folder.`;
+          return;
+        }
         const details = { name: nameField.input.value.trim(), email: emailField.input.value.trim(), password: passwordField.input.value };
         if (currentMode === 'signup') await signup(details);
         else await login(details);
@@ -219,9 +261,6 @@ export function openAuthDialog({ mode = 'signup', reason = '' } = {}) {
         .catch(() => {
           google.textContent = 'Google sign-in could not load. Use email instead.';
         });
-    } else {
-      google.hidden = true;
-      divider.hidden = true;
     }
 
     dialog.addEventListener('close', () => resolve(succeeded));
@@ -229,6 +268,41 @@ export function openAuthDialog({ mode = 'signup', reason = '' } = {}) {
     dialog.showModal();
     (currentMode === 'signup' ? nameField : emailField).input.focus();
   });
+}
+
+/** Opened from the link in a password reset email. */
+export function openResetDialog(token) {
+  document.querySelectorAll('dialog[open]').forEach((open) => open.close());
+  const dialog = createDialog('auth-modal');
+  const form = el('form', 'modal-form');
+  const password = field('New password', 'password', 'new-password', 'At least 8 characters');
+  const error = el('div', 'modal-error');
+  const submit = el('button', 'btn primary modal-submit', 'Save new password');
+  submit.type = 'submit';
+  form.append(password.row, error, submit);
+  dialog.append(el('h2', 'modal-title', 'Choose a new password'), el('p', 'modal-subtitle', "You'll be logged in here and logged out everywhere else."), form);
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    error.textContent = '';
+    submit.disabled = true;
+    try {
+      await resetPassword(token, password.input.value);
+      dialog.close();
+      toast('Password changed. You are logged in.');
+    } catch (err) {
+      error.textContent = err.message;
+      if (err.code === 'bad_reset_link') {
+        dialog.close();
+        openAuthDialog({ mode: 'forgot', reason: err.message });
+      }
+    } finally {
+      submit.disabled = false;
+    }
+  });
+
+  dialog.showModal();
+  password.input.focus();
 }
 
 function field(label, type, autocomplete, placeholder) {

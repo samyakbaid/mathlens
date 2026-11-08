@@ -245,6 +245,7 @@ ${updated()}
 <li>${provider ? `<strong>${esc(provider)}</strong>, the company whose AI model writes the lessons, receives your question and any document text in order to write the lesson.` : 'The AI model that writes the lessons runs on our own server, so your questions and documents are not sent to an outside AI company.'}</li>
 <li><strong>Razorpay</strong> processes payments.</li>
 <li><strong>Google</strong>, if you choose to sign in with Google.</li>
+<li><strong>Our email provider</strong> receives your email address if you ask for a password reset link.</li>
 <li>The pages load fonts from Google Fonts and code libraries from jsDelivr. Like any website you visit, they can see your IP address.</li>
 </ul>
 <h2>How long we keep it</h2>

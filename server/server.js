@@ -11,6 +11,7 @@ import express from 'express';
 import path from 'node:path';
 import { explainConcept, describeError, getProvider } from './ai.js';
 import { config } from './config.js';
+import { emailConfigured } from './email.js';
 import { identify, sameOriginOnly, authRouter, publicUser } from './auth.js';
 import { reserveAnswer, trialStatus, averageChargePaise } from './billing.js';
 import { paymentsRouter, paymentsEnabled, handleWebhook } from './payments.js';
@@ -169,6 +170,8 @@ app.listen(PORT, () => {
     console.log(`Note: ${err.message}`);
   }
   console.log(`Accounts: email${config.googleClientId ? ' + Google' : ' (set GOOGLE_CLIENT_ID for Google sign-in)'} · Payments: ${paymentsEnabled() ? 'Razorpay' : 'off (set RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET)'}`);
+  if (!emailConfigured()) console.log('Password reset: emails are off (set SMTP_HOST, SMTP_USER and SMTP_PASS). See .env.example');
+  else if (!config.publicUrl && process.env.NODE_ENV === 'production') console.log('Password reset: set PUBLIC_URL so emails can link back to the site');
   const missing = missingBusinessDetails();
   if (missing.length) console.log(`Policy pages: fill in ${missing.join(', ')} in .env before going live (they show on /contact, /terms and receipts)`);
 });

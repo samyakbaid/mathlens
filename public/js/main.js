@@ -6,6 +6,7 @@
 //   #/graph               Graph Lab, a Desmos-style graphing calculator (?e=... holds the expressions)
 //   #/ask?q=<question>    Ask: the AI tutor (add &go=1 to submit immediately)
 //   #/notebook[/<id>]     Notebook: saved lessons
+//   #/reset?token=<...>   the link in a password reset email
 //
 // Press / or Ctrl/Cmd+K anywhere to search topics or ask a question.
 
@@ -16,7 +17,7 @@ import { showTopic } from './views/topic-view.js';
 import { showAskPage } from './views/ask-view.js';
 import { showGraphPage } from './views/graph-view.js';
 import { showNotebook } from './views/notebook-view.js';
-import { mountAccountBar } from './views/account-ui.js';
+import { mountAccountBar, openResetDialog } from './views/account-ui.js';
 import { openPalette } from './views/palette.js';
 
 const view = document.getElementById('view');
@@ -27,6 +28,13 @@ function route() {
   // Stop whatever the previous page was doing (animations, pending requests)
   cleanupCurrentPage?.();
   cleanupCurrentPage = null;
+
+  // A password reset link: take the token out of the address bar and history right away
+  if (location.hash.startsWith('#/reset')) {
+    const token = new URLSearchParams(location.hash.split('?')[1]).get('token');
+    history.replaceState(null, '', `${location.pathname}#/`);
+    if (token) openResetDialog(token);
+  }
 
   const [path, queryString] = (location.hash.slice(1) || '/').split('?');
   const params = new URLSearchParams(queryString);

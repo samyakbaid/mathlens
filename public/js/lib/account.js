@@ -69,6 +69,15 @@ export async function loginWithGoogle(credential) {
   return refreshAccount();
 }
 
+export function requestPasswordReset(email) {
+  return post('/api/auth/forgot', { email });
+}
+
+export async function resetPassword(token, password) {
+  await post('/api/auth/reset', { token, password });
+  return refreshAccount();
+}
+
 export async function logout() {
   await post('/api/auth/logout');
   return refreshAccount();

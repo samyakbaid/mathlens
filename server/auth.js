@@ -8,9 +8,10 @@
 
 import crypto from 'node:crypto';
 import express from 'express';
-import { db } from './db.js';
+import { db, transaction } from './db.js';
 import { config } from './config.js';
 import { claimVisitorLessons } from './lessons.js';
+import { sendPasswordResetEmail } from './email.js';
 
 const SESSION_COOKIE = 'ml_session';
 const VISITOR_COOKIE = 'ml_visitor';
@@ -259,6 +260,49 @@ authRouter.post('/google', limitAuth, async (req, res) => {
   }
   startSession(req, res, user.id);
   res.json({ user: publicUser(user) });
+});
+
+// ---- Forgotten passwords ---------------------------------------------------------------------
+
+const RESET_LINKS_PER_HOUR = 3; // per account, so nobody can flood someone's inbox
+const limitForgot = rateLimiter({ max: 5, windowMs: 60 * 1000 });
+
+// The answer is the same whether or not the account exists, and the email is sent after replying,
+// so this can't be used to find out who has an account. A Google-only account can use this too:
+// getting the email proves they own the address, and it gives them a password as well.
+authRouter.post('/forgot', limitForgot, (req, res) => {
+  const email = normalizeEmail(req.body?.email);
+  if (!looksLikeEmail(email)) return res.status(400).json({ error: 'Please enter a valid email address.' });
+
+  const user = db.prepare('SELECT id, email FROM users WHERE email = ?').get(email);
+  if (user) {
+    const { count } = db.prepare("SELECT COUNT(*) AS count FROM password_resets WHERE user_id = ? AND created_at > datetime('now', '-1 hour')").get(user.id);
+    if (count < RESET_LINKS_PER_HOUR) {
+      const token = crypto.randomBytes(32).toString('base64url');
+      db.prepare("INSERT INTO password_resets (token_hash, user_id, expires_at) VALUES (?, ?, datetime('now', '+1 hour'))").run(sha256(token), user.id);
+      sendPasswordResetEmail(user.email, token).catch((err) => console.error('[email] Could not send a reset link:', err.message));
+    }
+  }
+  res.json({ ok: true });
+});
+
+authRouter.post('/reset', limitAuth, (req, res) => {
+  const password = String(req.body?.password ?? '');
+  if (password.length < 8) return res.status(400).json({ error: 'Use a password with at least 8 characters.' });
+  if (password.length > 200) return res.status(400).json({ error: 'That password is too long.' });
+
+  const reset = db.prepare("SELECT user_id FROM password_resets WHERE token_hash = ? AND expires_at > datetime('now')").get(sha256(String(req.body?.token ?? '')));
+  if (!reset) return res.status(400).json({ code: 'bad_reset_link', error: 'This link has expired or was already used. Ask for a new one.' });
+
+  // A new password logs out every device, in case someone else was in the account
+  const passwordHash = hashPassword(password);
+  transaction(() => {
+    db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(passwordHash, reset.user_id);
+    db.prepare('DELETE FROM sessions WHERE user_id = ?').run(reset.user_id);
+    db.prepare('DELETE FROM password_resets WHERE user_id = ?').run(reset.user_id);
+  });
+  startSession(req, res, reset.user_id);
+  res.json({ ok: true });
 });
 
 authRouter.post('/logout', (req, res) => {
