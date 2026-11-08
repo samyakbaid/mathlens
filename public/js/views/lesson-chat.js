@@ -6,7 +6,7 @@ import { el } from '../lib/dom.js';
 import { icon } from '../lib/icons.js';
 import { renderMarkdown } from '../lib/markdown.js';
 import { askFollowUp, listFollowUps } from '../lib/api.js';
-import { allowanceText, applyBilling, onAccountChange, refreshAccount } from '../lib/account.js';
+import { allowanceText, applyBilling, getAccount, onAccountChange, refreshAccount } from '../lib/account.js';
 import { openAuthDialog, openCreditsDialog } from './account-ui.js';
 import { bringIntoView } from './topic-view.js';
 
@@ -77,8 +77,10 @@ export function addLessonChat({ rail, card, target, picture }) {
   panel.append(head, thread, form, hint);
 
   const updateHint = () => {
+    const free = getAccount().freeQuestions;
+    const questions = !free ? '' : free.left > 0 ? `Questions are free: ${free.left} of ${free.limit} left today.` : "You've used today's free questions, so each one is now 1 chat.";
     const allowance = allowanceText();
-    hint.textContent = `Each message is 1 chat.${allowance ? ` ${allowance}` : ''}`;
+    hint.textContent = [questions, 'Changing the picture uses 1 chat.', allowance].filter(Boolean).join(' ');
   };
   const stopWatchingAccount = onAccountChange(updateHint);
   updateHint();

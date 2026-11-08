@@ -4,13 +4,14 @@
 // database, so a browser can't swap in other content. A built-in lesson's text only exists in the
 // browser, so it's sent with the question, limited in size, and treated as material to explain.
 //
-// Each message is one chat, paid for like any other answer at its real cost. Asking the same thing
-// about the same step again returns the saved reply for free.
+// A question is free, up to FREE_QUESTIONS_PER_DAY, and after that it's one chat at its real cost.
+// Changing a picture always uses a chat. Asking the same thing about the same step again returns
+// the saved reply for free.
 
 import express from 'express';
 import { db } from './db.js';
-import { answerFollowUp, describeError, getProvider } from './ai.js';
-import { reserveAnswer, trialStatus } from './billing.js';
+import { answerFollowUp, describeError, getProvider, rewritePicture } from './ai.js';
+import { freeQuestionsStatus, reserveAnswer, trialStatus } from './billing.js';
 import { publicUser } from './auth.js';
 import { keepAlive } from './keep-alive.js';
 import { normalizeQuestion, owner } from './lessons.js';
@@ -19,8 +20,10 @@ const MAX_QUESTION = 1000;
 const MAX_HISTORY = 4; // earlier exchanges the AI sees
 const MAX_TOPIC_STEPS = 20;
 const MAX_STEP_TEXT = 3000;
-// A short follow-up costs far less than a lesson, so a small balance can still pay for one
+// A question costs far less than a lesson, so a small balance can still pay for one.
+// Changing a picture costs more, so it needs a little more.
 const MINIMUM_BALANCE_PAISE = 15;
+const MINIMUM_PICTURE_BALANCE_PAISE = 35;
 const TOPIC_ID = /^[a-z0-9-]{1,80}$/;
 
 const clean = (value, limit) => String(value ?? '').slice(0, limit);
@@ -86,7 +89,7 @@ followupsRouter.post('/', async (req, res) => {
   const stepCount = target.lesson.steps.length;
   const stepIndex = Math.max(0, Math.min(stepCount - 1, Math.floor(Number(body.stepIndex) || 0)));
 
-  const account = () => ({ user: publicUser(req.user ? db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id) : null), trial: trialStatus(req) });
+  const account = () => ({ user: publicUser(req.user ? db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id) : null), trial: trialStatus(req), freeQuestions: freeQuestionsStatus(req) });
   const rows = threadRows(req, target);
 
   // Asked this about this step already? The saved reply is free. Very short messages like "why?"
@@ -105,7 +108,7 @@ followupsRouter.post('/', async (req, res) => {
     return res.status(status).json({ error: message });
   }
 
-  const ticket = reserveAnswer(req, model, { minimumPaise: MINIMUM_BALANCE_PAISE });
+  const ticket = reserveAnswer(req, model, { minimumPaise: MINIMUM_BALANCE_PAISE, freeQuestion: true });
   if (!ticket.ok) return res.status(ticket.status).json({ error: ticket.message, code: ticket.code });
 
   // The picture the reader is looking at now: the original, or one of their changed versions
@@ -116,14 +119,28 @@ followupsRouter.post('/', async (req, res) => {
   const started = Date.now();
   const finish = keepAlive(res);
   try {
-    const { reply, visualizationHtml, usage } = await answerFollowUp({
+    const answer = await answerFollowUp({
       lesson: target.lesson,
       stepIndex,
       question,
-      currentHtml,
       history: rows.slice(-MAX_HISTORY).map((row) => ({ question: row.question, reply: row.reply })),
     });
-    const billing = ticket.settle({ ...usage, kind: 'followup' });
+    const { reply } = answer;
+    const usage = { ...answer.usage };
+    let visualizationHtml = '';
+    if (answer.changePicture) {
+      // A question was free. Changing the picture uses a chat, so take one before doing the work.
+      const chat = ticket.upgradeToChat(MINIMUM_PICTURE_BALANCE_PAISE);
+      if (!chat.ok) {
+        ticket.release();
+        return finish(chat.status, { error: `Changing a picture uses a chat. ${chat.message}`, code: chat.code });
+      }
+      const picture = await rewritePicture({ lesson: target.lesson, stepIndex, question, pictureRequest: answer.pictureRequest, currentHtml });
+      visualizationHtml = picture.visualizationHtml;
+      usage.inputTokens += picture.usage.inputTokens;
+      usage.outputTokens += picture.usage.outputTokens;
+    }
+    const billing = ticket.settle({ ...usage, kind: visualizationHtml ? 'picture' : 'followup' });
     const result = db.prepare(`
       INSERT INTO followups (user_id, visitor_id, lesson_id, topic_id, step_index, question, question_key, reply, visualization_html)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)

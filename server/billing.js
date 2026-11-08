@@ -2,6 +2,8 @@
 //
 // A "chat" is one message to the tutor: a new lesson, a follow-up question or a change to a picture.
 //
+// Follow-up questions inside a lesson don't use a chat, up to FREE_QUESTIONS_PER_DAY.
+//
 // Order of payment for a chat:
 //   anonymous visitor → free trial answers (TRIAL_ANSWERS), then "please log in"
 //   logged-in user    → free sign-up answers, then their prepaid ₹ balance, then "please top up"
@@ -82,44 +84,68 @@ function ipTrialsToday(ip) {
   return db.prepare("SELECT COUNT(*) AS n FROM usage WHERE ip = ? AND paid_with = 'trial' AND created_at > datetime('now', '-1 day')").get(ip).n;
 }
 
+/** Follow-up questions this person can still ask today without using a chat. */
+export function freeQuestionsStatus(req) {
+  const limit = config.freeQuestionsPerDay;
+  const asked = req.user
+    ? db.prepare("SELECT COUNT(*) AS n FROM usage WHERE paid_with = 'question' AND (user_id = ? OR visitor_id = ?) AND created_at > datetime('now', '-1 day')").get(req.user.id, req.visitorId).n
+    : db.prepare("SELECT COUNT(*) AS n FROM usage WHERE paid_with = 'question' AND visitor_id = ? AND created_at > datetime('now', '-1 day')").get(req.visitorId).n;
+  let left = Math.max(0, limit - asked);
+  if (!req.user && left > 0) {
+    const fromNetwork = db.prepare("SELECT COUNT(*) AS n FROM usage WHERE paid_with = 'question' AND user_id IS NULL AND ip = ? AND created_at > datetime('now', '-1 day')").get(req.ip).n;
+    if (fromNetwork >= config.freeQuestionsPerIpPerDay) left = 0;
+  }
+  return { limit, left };
+}
+
 /**
- * Decide how this request will be paid for and reserve it (a trial or free answer is taken
- * now, and given back by release() if the answer fails).
- * @returns {{ ok: true, payWith, release, settle } | { ok: false, status, code, message }}
+ * Take one chat: a free trial chat, a free sign-up chat, or enough balance to pay for it.
+ * @returns {{ ok: true, payWith: string } | { ok: false, status: number, code: string, message: string }}
  */
-export function reserveAnswer(req, model, { minimumPaise } = {}) {
+function takeChat(req, model, minimumPaise) {
+  if (req.user) {
+    const taken = db.prepare('UPDATE users SET free_answers_left = free_answers_left - 1 WHERE id = ? AND free_answers_left > 0').run(req.user.id);
+    if (taken.changes) return { ok: true, payWith: 'free' };
+    if (req.user.balance_paise >= (minimumPaise ?? averageChargePaise(model))) return { ok: true, payWith: 'credits' };
+    return {
+      ok: false,
+      status: 402,
+      code: 'payment_required',
+      message: `You've used your free chats. ₹20 covers about ${Math.max(1, Math.floor(2000 / averageChargePaise(model)))} more, and every lesson you've asked for stays free to reopen.`,
+    };
+  }
+  if (ipTrialsToday(req.ip) >= config.trialPerIpPerDay) {
+    return { ok: false, status: 401, code: 'login_required', message: 'Free chats from this network are used up for today. Sign up (free) to keep going.' };
+  }
+  const taken = db.prepare('UPDATE visitors SET trial_used = trial_used + 1 WHERE id = ? AND trial_used < ?').run(req.visitorId, config.trialAnswers);
+  if (taken.changes) return { ok: true, payWith: 'trial' };
+  return {
+    ok: false,
+    status: 401,
+    code: 'login_required',
+    message: `You've used your ${config.trialAnswers} free chats. Sign up (free) to get ${config.freeAnswersAfterSignup} more.`,
+  };
+}
+
+/**
+ * Decide how this request will be paid for and reserve it (a trial or free chat is taken now, and
+ * given back by release() if the answer fails). With freeQuestion, a free daily question is used
+ * first; if the AI then finds it needs a new picture, upgradeToChat() takes a chat as well.
+ * @returns {{ ok: true, payWith, upgradeToChat, release, settle } | { ok: false, status, code, message }}
+ */
+export function reserveAnswer(req, model, { minimumPaise, freeQuestion = false } = {}) {
   const key = accountKey(req);
   if (inFlight.has(key)) {
     return { ok: false, status: 429, code: 'busy', message: 'Your previous question is still being answered. Wait for it to finish.' };
   }
 
   let payWith = null;
-  if (req.user) {
-    const taken = db.prepare('UPDATE users SET free_answers_left = free_answers_left - 1 WHERE id = ? AND free_answers_left > 0').run(req.user.id);
-    if (taken.changes) payWith = 'free';
-    else if (req.user.balance_paise >= (minimumPaise ?? averageChargePaise(model))) payWith = 'credits';
-    else {
-      return {
-        ok: false,
-        status: 402,
-        code: 'payment_required',
-        message: `You've used your free chats. ₹20 covers about ${Math.max(1, Math.floor(2000 / averageChargePaise(model)))} more, and every lesson you've asked for stays free to reopen.`,
-      };
-    }
+  if (freeQuestion && freeQuestionsStatus(req).left > 0) {
+    payWith = 'question';
   } else {
-    if (ipTrialsToday(req.ip) >= config.trialPerIpPerDay) {
-      return { ok: false, status: 401, code: 'login_required', message: 'Free chats from this network are used up for today. Sign up (free) to keep going.' };
-    }
-    const taken = db.prepare('UPDATE visitors SET trial_used = trial_used + 1 WHERE id = ? AND trial_used < ?').run(req.visitorId, config.trialAnswers);
-    if (!taken.changes) {
-      return {
-        ok: false,
-        status: 401,
-        code: 'login_required',
-        message: `You've used your ${config.trialAnswers} free chats. Sign up (free) to get ${config.freeAnswersAfterSignup} more.`,
-      };
-    }
-    payWith = 'trial';
+    const chat = takeChat(req, model, minimumPaise);
+    if (!chat.ok) return chat;
+    payWith = chat.payWith;
   }
 
   inFlight.add(key);
@@ -127,7 +153,20 @@ export function reserveAnswer(req, model, { minimumPaise } = {}) {
 
   return {
     ok: true,
-    payWith,
+    get payWith() {
+      return payWith;
+    },
+    /** This needs a chat after all (it changes a picture). Takes one, or says why it can't. */
+    upgradeToChat(minimum) {
+      if (payWith === 'question') {
+        const chat = takeChat(req, model, minimum);
+        if (!chat.ok) return chat;
+        payWith = chat.payWith;
+      } else if (payWith === 'credits' && req.user.balance_paise < minimum) {
+        return takeChat(req, model, minimum);
+      }
+      return { ok: true };
+    },
     /** The answer failed: give the trial / free answer back. */
     release() {
       if (done) return;

@@ -343,7 +343,7 @@ export async function openCreditsDialog({ reason = '' } = {}) {
     // Why it's worth it, in real numbers
     const reasons = el('ul', 'worth-it');
     for (const text of [
-      `₹20 covers about ${answersFor(2000)} chats, roughly the price of a cup of chai. A chat is a new lesson, a follow-up question or a change to a picture.`,
+      `₹20 covers about ${answersFor(2000)} chats, roughly the price of a cup of chai. A chat is a new lesson or a change to a picture, and follow-up questions are free up to ${getAccount().freeQuestions?.limit ?? 10} a day.`,
       'Every lesson is saved in your notebook, and reopening it costs nothing.',
       "There's no subscription. You pay once and your credit never runs out.",
     ]) {
@@ -354,7 +354,7 @@ export async function openCreditsDialog({ reason = '' } = {}) {
     }
     const cost = el('p', 'cost-explainer');
     cost.append(
-      `A new lesson costs about ${rupees(average)} and a quick follow-up usually costs less: what the AI charges us${pricing?.markup ? `, plus ${Math.round(pricing.markup * 100)}% for the payment fee` : ''}. `,
+      `A new lesson costs about ${rupees(average)}, and a change to a picture costs less: what the AI charges us${pricing?.markup ? `, plus ${Math.round(pricing.markup * 100)}% for the payment fee` : ''}. `,
     );
     const pricingLink = el('a', '', 'How pricing works');
     pricingLink.href = '/pricing';

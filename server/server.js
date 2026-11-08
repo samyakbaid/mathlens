@@ -15,7 +15,7 @@ import { emailConfigured } from './email.js';
 import { keepAlive } from './keep-alive.js';
 import { followupsRouter } from './followups.js';
 import { identify, sameOriginOnly, authRouter, publicUser } from './auth.js';
-import { reserveAnswer, trialStatus, averageChargePaise } from './billing.js';
+import { reserveAnswer, trialStatus, averageChargePaise, freeQuestionsStatus } from './billing.js';
 import { paymentsRouter, paymentsEnabled, handleWebhook } from './payments.js';
 import { db } from './db.js';
 import { lessonsRouter, lessonKey, findSavedLesson, saveLesson } from './lessons.js';
@@ -80,6 +80,7 @@ app.get('/api/me', (req, res) => {
   res.json({
     user: publicUser(req.user),
     trial: trialStatus(req),
+    freeQuestions: freeQuestionsStatus(req),
     pricing: {
       currency: 'INR',
       averageAnswerPaise: average,

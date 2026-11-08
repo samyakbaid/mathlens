@@ -13,6 +13,10 @@ export const config = {
   /** Extra free AI answers when someone signs up */
   get freeAnswersAfterSignup() { return number('FREE_ANSWERS_AFTER_SIGNUP', 3); },
   /** Anti-abuse: trial answers allowed per IP address per day (shared Wi-Fi gets a few people) */
+  /** Follow-up questions inside a lesson that don't use a chat, per person per day */
+  get freeQuestionsPerDay() { return number('FREE_QUESTIONS_PER_DAY', 10); },
+  /** The same for everyone without an account on one network, so clearing cookies doesn't reset it */
+  get freeQuestionsPerIpPerDay() { return number('FREE_QUESTIONS_PER_IP_PER_DAY', 30); },
   get trialPerIpPerDay() { return number('TRIAL_PER_IP_PER_DAY', 10); },
   /** Anti-abuse: new accounts per IP per day that get the free sign-up answers */
   get freeSignupsPerIpPerDay() { return number('FREE_SIGNUPS_PER_IP_PER_DAY', 3); },

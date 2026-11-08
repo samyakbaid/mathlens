@@ -154,46 +154,48 @@ function describeLesson(lesson, stepIndex) {
 }
 
 /**
- * Answer a follow-up inside a lesson. Most are questions, so the first call is small and quick: it
- * doesn't carry the picture's code. Only when the reader wants the picture changed does a second
- * call rewrite it, and if that can't be made to work the whole answer fails and isn't charged.
- * @returns {Promise<{reply: string, visualizationHtml: string, usage: object}>}
+ * Answer a follow-up inside a lesson. Most are questions, so this call is small and quick: it
+ * doesn't carry the picture's code. It also says whether the reader wants the picture changed.
+ * @returns {Promise<{reply: string, changePicture: boolean, pictureRequest: string, usage: object}>}
  */
-export async function answerFollowUp({ lesson, stepIndex, question, currentHtml, history }) {
+export async function answerFollowUp({ lesson, stepIndex, question, history }) {
   const provider = getProvider();
   const earlier = history.length ? `Earlier in this chat:\n${history.map((turn) => `Reader: ${turn.question}\nYou: ${turn.reply}`).join('\n\n')}\n\n` : '';
-  const lessonText = describeLesson(lesson, stepIndex);
-
-  const first = await provider.generate({
+  const { text, usage } = await provider.generate({
     system: FOLLOW_UP_PROMPT,
-    user: `${lessonText}\n\n${earlier}The reader is on step ${stepIndex + 1} of ${lesson.steps.length} and says:\n${question}`,
+    user: `${describeLesson(lesson, stepIndex)}\n\n${earlier}The reader is on step ${stepIndex + 1} of ${lesson.steps.length} and says:\n${question}`,
     schema: FOLLOW_UP_SCHEMA,
     effort: process.env.AI_CHAT_EFFORT || undefined,
   });
-  const parsed = parseJsonLoosely(first.text);
+  const parsed = parseJsonLoosely(text);
   const reply = typeof parsed.reply === 'string' ? restoreLostBackslashes(parsed.reply).trim() : '';
   if (!reply) throw new SyntaxError('Model output is missing the reply');
-  const usage = { ...first.usage };
+  return { reply, changePicture: parsed.changePicture === true, pictureRequest: String(parsed.pictureRequest ?? ''), usage };
+}
 
-  let visualizationHtml = '';
-  if (parsed.changePicture === true) {
-    const picture = await provider.generate({
-      system: PICTURE_CHANGE_PROMPT,
-      user: `${lessonText}\n\nThe reader is on step ${stepIndex + 1} and asked: ${question}\nThe change to make: ${String(parsed.pictureRequest ?? question)}\n\n${currentHtml ? `The current picture:\n<<<PICTURE\n${currentHtml}\nPICTURE>>>` : 'There is no code to edit, so build a new picture for this whole lesson, with one scene for each step.'}`,
-      schema: PICTURE_SCHEMA,
-    });
-    usage.inputTokens += picture.usage.inputTokens;
-    usage.outputTokens += picture.usage.outputTokens;
-    const changed = { visualizationHtml: repairLatexInScripts(restoreLostBackslashes(String(parseJsonLoosely(picture.text).visualizationHtml ?? ''))) };
-    if (!changed.visualizationHtml.trim()) throw new SyntaxError('Model output is missing the changed picture');
-    const repairUsage = await repairPicture(provider, changed);
-    if (repairUsage) {
-      usage.inputTokens += repairUsage.inputTokens;
-      usage.outputTokens += repairUsage.outputTokens;
-    }
-    visualizationHtml = changed.visualizationHtml;
-  }
-  return { reply, visualizationHtml, usage };
+/**
+ * Rewrite a lesson's picture. If it can't be made to work this throws, so the whole answer fails
+ * and isn't charged.
+ * @returns {Promise<{visualizationHtml: string, usage: object}>}
+ */
+export async function rewritePicture({ lesson, stepIndex, question, pictureRequest, currentHtml }) {
+  const provider = getProvider();
+  const { text, usage } = await provider.generate({
+    system: PICTURE_CHANGE_PROMPT,
+    user: `${describeLesson(lesson, stepIndex)}\n\nThe reader is on step ${stepIndex + 1} and asked: ${question}\nThe change to make: ${pictureRequest || question}\n\n${currentHtml ? `The current picture:\n<<<PICTURE\n${currentHtml}\nPICTURE>>>` : 'There is no code to edit, so build a new picture for this whole lesson, with one scene for each step.'}`,
+    schema: PICTURE_SCHEMA,
+  });
+  const changed = { visualizationHtml: repairLatexInScripts(restoreLostBackslashes(String(parseJsonLoosely(text).visualizationHtml ?? ''))) };
+  if (!changed.visualizationHtml.trim()) throw new SyntaxError('Model output is missing the changed picture');
+  const repairUsage = await repairPicture(provider, changed);
+  return {
+    visualizationHtml: changed.visualizationHtml,
+    usage: {
+      ...usage,
+      inputTokens: usage.inputTokens + (repairUsage?.inputTokens ?? 0),
+      outputTokens: usage.outputTokens + (repairUsage?.outputTokens ?? 0),
+    },
+  };
 }
 
 /** Parse JSON even if the model wrapped it in ```json fences, <think> tags or extra prose. */

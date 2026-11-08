@@ -33,7 +33,7 @@ export function showHome(view) {
       </section>
       <div class="continue-slot"></div>
       <a class="price-strip" href="/pricing">
-        <span><strong>Free to start.</strong> The lessons and Graph Lab are always free. The tutor gives you <b data-fill="trial">2</b> free chats, then <b data-fill="free">3</b> more when you sign up.</span>
+        <span><strong>Free to start.</strong> The lessons and Graph Lab are always free. The tutor gives you <b data-fill="trial">2</b> free chats, then <b data-fill="free">3</b> more when you sign up. Inside a lesson, <b data-fill="questions">10</b> follow-up questions a day are free.</span>
         <span class="price-strip-cta">After that, about <b data-fill="average">₹0.20</b> a chat ${icon('right', 14)}</span>
       </a>
       <section class="paths-section">
@@ -63,11 +63,12 @@ export function showHome(view) {
   const stopArt = startHeroArt(view.querySelector('.hero-art'));
 
   // Real numbers in the pricing strip
-  const fillPrices = ({ pricing, trial }) => {
+  const fillPrices = ({ pricing, trial, freeQuestions }) => {
     if (!pricing) return;
     const set = (key, value) => view.querySelectorAll(`[data-fill="${key}"]`).forEach((node) => (node.textContent = value));
     set('trial', String(trial?.limit ?? 3));
     set('free', String(pricing.freeAnswersAfterSignup));
+    set('questions', String(freeQuestions?.limit ?? 10));
     set('average', rupees(pricing.averageAnswerPaise));
   };
   fillPrices(getAccount());

@@ -36,6 +36,7 @@ export function applyBilling(billing) {
   if (!billing) return;
   if (billing.user !== undefined) account.user = billing.user;
   if (billing.trial) account.trial = billing.trial;
+  if (billing.freeQuestions) account.freeQuestions = billing.freeQuestions;
   emit();
 }
 
