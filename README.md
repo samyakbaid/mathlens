@@ -226,9 +226,9 @@ Answers usually take 20–60 seconds because the model writes a full interactive
 
 ## Deploying on an Oracle Always Free server
 
-The site runs on one Ubuntu ARM server, with Cloudflare Tunnel in front. Visitors reach it through Cloudflare, so the server needs no open web ports and HTTPS is handled for you.
+The site runs on one Ubuntu server, with Cloudflare Tunnel in front. Visitors reach it through Cloudflare, so the server needs no open web ports and HTTPS is handled for you.
 
-**Server:** Ampere A1 with 1 OCPU and 2 GB of memory, in your home region. The small memory is on purpose. Oracle treats a server as idle if CPU, network and memory all stay under 20% for 7 days, and a modest site's memory use stays above that on 2 GB.
+**Server:** the Always Free `VM.Standard.E2.1.Micro` (1 GB memory) in Mumbai, because Ampere A1 was out of capacity there. Oracle treats a Micro as idle if CPU and network use stay under 20% for 7 days, which a quiet site can do. Check the server still runs now and then, and start it again if Oracle has stopped it. The setup script also works on A1 if you move later.
 
 - `deploy/deploy.sh ubuntu@SERVER_IP https://your.site` sets up the server, uploads `.env` with the live settings, and starts the site. Use it again whenever `.env` changes.
 - `deploy/deploy.sh ubuntu@SERVER_IP` sends the latest commit and restarts.
