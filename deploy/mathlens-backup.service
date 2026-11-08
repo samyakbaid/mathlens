@@ -1,0 +1,7 @@
+[Unit]
+Description=MathLens database backup
+
+[Service]
+Type=oneshot
+User=mathlens
+ExecStart=/usr/local/bin/node /opt/mathlens/deploy/backup.mjs /var/lib/mathlens/mathlens.db /var/backups/mathlens

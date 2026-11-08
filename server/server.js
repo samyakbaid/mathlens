@@ -166,7 +166,7 @@ app.post('/api/ask', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, process.env.HOST || undefined, () => {
   console.log(`MathLens running at http://localhost:${PORT}`);
   try {
     const provider = getProvider();

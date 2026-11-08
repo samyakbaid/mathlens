@@ -224,12 +224,14 @@ Answers usually take 20–60 seconds because the model writes a full interactive
 - Follow-up questions on an AI answer ("now show it in 3D").
 - A "Graduate" track: measure theory, functional analysis, differential geometry.
 
-## Deploying on Render
+## Deploying on an Oracle Always Free server
 
-`render.yaml` describes the whole service: a paid web service in Singapore with a 1 GB persistent disk at `/var/data`, where the database lives. In Render choose **New → Blueprint**, pick this repo, and fill in the values it asks for. Secrets and personal details stay in Render, never in the repo.
+The site runs on one Ubuntu ARM server, with Cloudflare Tunnel in front. Visitors reach it through Cloudflare, so the server needs no open web ports and HTTPS is handled for you.
 
-- Keep the disk. Everything outside `/var/data` is wiped on each deploy, including any database stored there.
-- Render snapshots the disk every 24 hours and keeps snapshots for 7 days. Restoring one discards everything after it.
-- With a disk there's only one instance, so each deploy takes the site down for a few seconds.
-- After the first deploy, open `/ipcheck` from two different networks. `seenAs` should show your real IP each time. If it doesn't, change `TRUST_PROXY`. Then delete `SHOW_IP_CHECK`.
-- Set `PUBLIC_URL` to the real address, add it to Google's Authorized JavaScript origins, and use the Razorpay webhook `https://<your-site>/api/payments/webhook`.
+**Server:** Ampere A1 with 1 OCPU and 2 GB of memory, in your home region. The small memory is on purpose. Oracle treats a server as idle if CPU, network and memory all stay under 20% for 7 days, and a modest site's memory use stays above that on 2 GB.
+
+- `deploy/deploy.sh ubuntu@SERVER_IP https://your.site` sets up the server, uploads `.env` with the live settings, and starts the site. Use it again whenever `.env` changes.
+- `deploy/deploy.sh ubuntu@SERVER_IP` sends the latest commit and restarts.
+- The database is at `/var/lib/mathlens` and is backed up daily to `/var/backups/mathlens` (last 14). Those copies are on the same server, so download one regularly: if the server or account is lost, they go too.
+- After the first deploy, open `/ipcheck` from two networks. `seenAs` should be your real IP each time, because the free limits count by IP. Then remove `SHOW_IP_CHECK` from the live settings.
+- The tunnel gives up on a request after about 125 seconds. If a very long lesson hits that, asking again joins the same answer or opens the saved lesson without another charge.

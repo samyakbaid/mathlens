@@ -1,0 +1,20 @@
+[Unit]
+Description=MathLens
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=mathlens
+WorkingDirectory=/opt/mathlens
+EnvironmentFile=/etc/mathlens.env
+ExecStart=/usr/local/bin/node server/server.js
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/mathlens
+
+[Install]
+WantedBy=multi-user.target
