@@ -14,6 +14,7 @@ import { addSteps } from '../lib/controls.js';
 import { themeCss, onThemeChange } from '../lib/theme.js';
 import { findTopic } from '../topics.js';
 import { bringIntoView } from './topic-view.js';
+import { addLessonChat } from './lesson-chat.js';
 
 // The viz kit (base styles, equation helper, step protocol) goes into every visualization.
 let kit = { css: '', js: '', graph: '' };
@@ -28,10 +29,10 @@ const VIZ_FONTS = 'https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@4
  * Render a lesson into `container`.
  * @param {HTMLElement} container
  * @param {object} answer - { title, intro, steps: [{ title, explanation, visualFocus }], keyIdeas, visualizationHtml, relatedBuiltInTopic }
- * @param {{ kicker?: string, note?: HTMLElement }} options - note: extra line under the title (e.g. "saved")
+ * @param {{ kicker?: string, note?: HTMLElement, lessonId?: number }} options - note: extra line under the title (e.g. "saved"); lessonId: turns on the chat
  * @returns {Promise<() => void>} cleanup
  */
-export async function showLesson(container, answer, { kicker, note } = {}) {
+export async function showLesson(container, answer, { kicker, note, lessonId } = {}) {
   await kitReady;
   const steps = answer.steps?.length ? answer.steps : [{ title: answer.title, explanation: answer.explanation ?? '', visualFocus: '' }];
 
@@ -45,44 +46,29 @@ export async function showLesson(container, answer, { kicker, note } = {}) {
   }
   if (note) header.append(note);
 
-  // The visualization is untrusted code, so it runs in a sandboxed iframe:
-  // "allow-scripts" without "allow-same-origin" means it can't touch this page, cookies or storage.
   const lessonCard = el('section', 'lesson fit');
   const stage = el('div', 'lesson-stage');
-  const stageMore = el('button', 'scroll-more', 'More of this picture below');
-  stageMore.type = 'button';
-  stageMore.hidden = true;
-  stageMore.insertAdjacentHTML('beforeend', icon('down', 14));
-  stageMore.addEventListener('click', () => stage.scrollBy({ top: stage.clientHeight * 0.7, behavior: 'smooth' }));
-  const frame = el('iframe', 'ai-frame');
-  frame.setAttribute('sandbox', 'allow-scripts');
-  frame.title = `Interactive visualization: ${answer.title}`;
-  frame.srcdoc = withTheme(answer.visualizationHtml, { stepCount: steps.length, step: 0 });
-  stage.append(frame, stageMore);
-  const markStage = () => {
-    const overflowing = window.matchMedia('(min-width: 721px) and (min-height: 560px)').matches && frame.getBoundingClientRect().height > stage.clientHeight - 20;
-    stageMore.hidden = !overflowing || stage.scrollTop + stage.clientHeight >= stage.scrollHeight - 8;
-    stage.classList.toggle('overflowing', overflowing);
-  };
-  stage.addEventListener('scroll', markStage, { passive: true });
-  const stageWatcher = new ResizeObserver(markStage);
-  stageWatcher.observe(stage);
-  stageWatcher.observe(frame);
+  let lesson = null;
+  const picture = await createPictureFrame({ title: answer.title, card: lessonCard, stepCount: steps.length, getStep: () => lesson?.index ?? 0 });
+  picture.setHtml(answer.visualizationHtml);
+  const frame = picture.frame;
+  stage.append(frame);
+  const stopWatchingStage = watchStage(stage, frame);
   const rail = el('div', 'lesson-rail');
-  const grip = el('div', 'lesson-grip');
-  grip.title = 'Drag to make the picture or the text bigger';
-  grip.setAttribute('role', 'separator');
-  grip.setAttribute('aria-orientation', 'horizontal');
-  grip.setAttribute('aria-label', 'Resize the picture and the text');
-  grip.tabIndex = 0;
-  lessonCard.append(stage, grip, rail);
-  makeResizable(grip, lessonCard, frame);
+  lessonCard.append(stage, addResizeHandle(lessonCard, frame), rail);
 
-  const sendStep = (index) => frame.contentWindow?.postMessage({ type: 'mathlens:step', index, count: steps.length }, '*');
-  const lesson = addSteps(
+  lesson = addSteps(
     rail,
-    steps.map((step, i) => ({ title: step.title, text: step.explanation, focus: step.visualFocus, enter: () => sendStep(i) })),
+    steps.map((step, i) => ({ title: step.title, text: step.explanation, focus: step.visualFocus, enter: () => picture.sendStep(i) })),
   );
+  const stopChat = lessonId
+    ? addLessonChat({
+        rail: lesson,
+        card: lessonCard,
+        target: { lessonId },
+        picture: { show: (html) => picture.setHtml(html), reset: () => picture.setHtml(answer.visualizationHtml) },
+      })
+    : () => {};
 
   // After the lesson: key ideas, the related built-in lesson, and everything on one page
   const after = el('div', 'after-lesson');
@@ -119,44 +105,121 @@ export async function showLesson(container, answer, { kicker, note } = {}) {
   lessonCard.addEventListener('lessonstep', (event) => {
     if (event.detail.byReader) bringIntoView(lessonCard);
   });
+  lessonCard.addEventListener('picturegoto', (event) => lesson.go(event.detail.index));
 
-  // Hovering (or tapping) a coloured phrase in the text lights up the same thing in the picture
+  return () => {
+    picture.destroy();
+    stopChat();
+    stopWatchingStage();
+  };
+}
+
+/**
+ * A sandboxed frame for an AI-written picture: it can't touch this page, cookies or storage
+ * ("allow-scripts" without "allow-same-origin"). Keeps it on the current step and in the current
+ * theme, and lights up the picture when a coloured phrase in the card is hovered or tapped.
+ */
+export async function createPictureFrame({ title, card, stepCount, getStep }) {
+  await kitReady;
+  const frame = el('iframe', 'ai-frame');
+  frame.setAttribute('sandbox', 'allow-scripts');
+  frame.title = `Interactive visualization: ${title}`;
+  let html = '';
+  const render = () => {
+    frame.dataset.resizes = '0';
+    frame.style.height = '';
+    frame.srcdoc = withTheme(html, { stepCount, step: getStep() });
+  };
+  const sendStep = (index) => frame.contentWindow?.postMessage({ type: 'mathlens:step', index, count: stepCount }, '*');
+
   const sendHighlight = (color) => frame.contentWindow?.postMessage({ type: 'mathlens:highlight', color }, '*');
   let tappedRef = null;
-  lessonCard.addEventListener('pointerover', (event) => {
+  const onOver = (event) => {
     const ref = event.target.closest?.('.ml-ref');
     if (ref && event.pointerType === 'mouse') sendHighlight(ref.dataset.ref);
-  });
-  lessonCard.addEventListener('pointerout', (event) => {
+  };
+  const onOut = (event) => {
     if (event.target.closest?.('.ml-ref') && event.pointerType === 'mouse') sendHighlight(null);
-  });
-  lessonCard.addEventListener('click', (event) => {
+  };
+  const onTap = (event) => {
     const ref = event.target.closest?.('.ml-ref');
     if (!ref || !matchMedia('(hover: none)').matches) return;
     tappedRef = tappedRef === ref ? null : ref;
     sendHighlight(tappedRef ? ref.dataset.ref : null);
-  });
+  };
+  card.addEventListener('pointerover', onOver);
+  card.addEventListener('pointerout', onOut);
+  card.addEventListener('click', onTap);
 
   const onMessage = (event) => {
     if (event.source !== frame.contentWindow) return;
     const data = event.data ?? {};
-    if (data.type === 'mathlens:ready') sendStep(lesson.index);
-    if (data.type === 'mathlens:goto') lesson.go(Number(data.index) || 0);
+    if (data.type === 'mathlens:ready') sendStep(getStep());
+    if (data.type === 'mathlens:goto') card.dispatchEvent(new CustomEvent('picturegoto', { detail: { index: Number(data.index) || 0 } }));
     if (data.type === 'mathlens:height') fitFrame(frame, data.height);
   };
   window.addEventListener('message', onMessage);
-
-  // New colours when the theme changes, staying on the same step
   const stopWatchingTheme = onThemeChange(() => {
-    frame.dataset.resizes = '0';
-    frame.srcdoc = withTheme(answer.visualizationHtml, { stepCount: steps.length, step: lesson.index });
-  });
+    if (html) render();
+  }); // new colours, same step
 
-  return () => {
-    window.removeEventListener('message', onMessage);
-    stopWatchingTheme();
-    stageWatcher.disconnect();
+  return {
+    frame,
+    sendStep,
+    setHtml(next) {
+      html = next;
+      render();
+    },
+    destroy() {
+      window.removeEventListener('message', onMessage);
+      stopWatchingTheme();
+      card.removeEventListener('pointerover', onOver);
+      card.removeEventListener('pointerout', onOut);
+      card.removeEventListener('click', onTap);
+    },
   };
+}
+
+/** Says so when a picture is taller than its space, and scrolls to the rest. */
+export function watchStage(stage, frame) {
+  const more = el('button', 'scroll-more', 'More of this picture below');
+  more.type = 'button';
+  more.hidden = true;
+  more.insertAdjacentHTML('beforeend', icon('down', 14));
+  more.addEventListener('click', () => stage.scrollBy({ top: stage.clientHeight * 0.7, behavior: 'smooth' }));
+  stage.append(more);
+  let stageHeight = stage.clientHeight;
+  const mark = () => {
+    if (stage.clientHeight !== stageHeight) {
+      stageHeight = stage.clientHeight;
+      frame.style.height = '';
+      frame.dataset.resizes = '0';
+    }
+    const overflowing = window.matchMedia('(min-width: 721px) and (min-height: 560px)').matches && frame.getBoundingClientRect().height > stage.clientHeight + 4;
+    more.hidden = !overflowing || stage.scrollTop + stage.clientHeight >= stage.scrollHeight - 8;
+    stage.classList.toggle('overflowing', overflowing);
+  };
+  stage.addEventListener('scroll', mark, { passive: true });
+  const watcher = new ResizeObserver(mark);
+  watcher.observe(stage);
+  watcher.observe(frame);
+  return () => {
+    watcher.disconnect();
+    stage.removeEventListener('scroll', mark);
+    more.remove();
+  };
+}
+
+/** The handle between the picture and the text. */
+export function addResizeHandle(card, frame) {
+  const grip = el('div', 'lesson-grip');
+  grip.title = 'Drag to make the picture or the text bigger';
+  grip.setAttribute('role', 'separator');
+  grip.setAttribute('aria-orientation', 'horizontal');
+  grip.setAttribute('aria-label', 'Resize the picture and the text');
+  grip.tabIndex = 0;
+  makeResizable(grip, card, frame);
+  return grip;
 }
 
 /** Dragging the handle moves the line between the picture and the text. */
@@ -166,8 +229,10 @@ function makeResizable(grip, card, frame) {
     const track = card.querySelector('.rail-track')?.getBoundingClientRect().height ?? 60;
     const limited = Math.max(150, Math.min(box.height - track - 170, height));
     card.style.setProperty('--rail-card-height', `${Math.round(limited)}px`);
-    frame.style.height = ''; // the picture refits itself to the new space
-    frame.dataset.resizes = '0';
+    if (frame) {
+      frame.style.height = ''; // the picture refits itself to the new space
+      frame.dataset.resizes = '0';
+    }
   };
   const current = () => card.querySelector('.rail-card')?.getBoundingClientRect().height ?? 260;
   let startY = 0;
@@ -186,7 +251,7 @@ function makeResizable(grip, card, frame) {
   grip.addEventListener('pointercancel', stop);
   grip.addEventListener('dblclick', () => {
     card.style.removeProperty('--rail-card-height');
-    frame.style.height = '';
+    if (frame) frame.style.height = '';
   });
   grip.addEventListener('keydown', (event) => {
     if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
@@ -202,6 +267,10 @@ function fitFrame(frame, reported) {
   const inFittedLesson = Boolean(frame.closest('.lesson.fit')) && window.matchMedia('(min-width: 721px) and (min-height: 560px)').matches;
   const floor = inFittedLesson ? frame.parentElement.clientHeight : 420;
   const target = Math.max(floor, Math.min(1100, Math.ceil(Number(reported) || 0)));
+  if (inFittedLesson && target <= floor + 5) {
+    frame.style.height = ''; // it fits: follow the stage's height as that changes
+    return;
+  }
   const currentHeight = frame.getBoundingClientRect().height;
   const resizes = Number(frame.dataset.resizes || 0);
   const change = target - currentHeight;

@@ -21,7 +21,7 @@ export function setupProblem() {
 }
 
 /** Returns { text, usage: { inputTokens, outputTokens, model } }. */
-export async function generate({ system, user, schema }) {
+export async function generate({ system, user, schema, effort }) {
   // Streaming keeps long generations (a full HTML visualization) from hitting HTTP timeouts.
   // `fallbacks: "default"` lets the API retry on a fallback model if the main one declines.
   const stream = getClient().beta.messages.stream({
@@ -30,7 +30,7 @@ export async function generate({ system, user, schema }) {
     betas: ['server-side-fallback-2026-07-01'],
     fallbacks: 'default',
     output_config: {
-      effort: 'medium',
+      effort: effort || 'medium',
       format: { type: 'json_schema', schema },
     },
     system,

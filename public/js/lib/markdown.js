@@ -37,7 +37,11 @@ export function renderMarkdown(markdown) {
  * \htmlClass{c-green}{...} is allowed so formulas can use the theme colours (see .c-* in styles.css).
  */
 export function renderMath(tex, displayMode = false) {
-  return katex.renderToString(tex, {
+  // Models sometimes double a backslash (\\\\div for \\div). Outside a matrix or aligned block, where
+  // \\\\ really is a line break, a doubled backslash right before a word is always that slip.
+  const restored = String(tex).replace(/\f/g, '\\f').replace(/[\b]/g, '\\b').replace(/\t(?=(?:ext\{|extbf\{|imes\b|heta\b|au\b|o(?:[\d\s}]|$)|riangle\b|ilde\{|frac\{))/g, '\\t').replace(/\r(?=(?:ho\b|ight(?:arrow)?\b))/g, '\\r').replace(/\n(?=abla\b)/g, '\\n'); // a slip in the model's JSON can turn \frac into a form feed plus "rac"
+  const cleaned = /\\begin|&/.test(restored) ? restored : restored.replace(/\\\\([A-Za-z]{2,})/g, '\\$1');
+  return katex.renderToString(cleaned, {
     displayMode,
     throwOnError: false,
     strict: 'ignore',

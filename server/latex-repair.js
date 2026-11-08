@@ -84,3 +84,18 @@ function findTemplateEnd(code, start) {
   }
   return code.length;
 }
+
+/**
+ * A model that writes "\\frac" in its JSON with one backslash too few gets a form feed plus "rac"
+ * once the JSON is parsed ("\\to" becomes a tab plus "o"). Form feeds and backspaces never belong
+ * in a lesson. Tabs and returns do, so those are only restored before a word that can't be anything
+ * but LaTeX. A plain newline is left alone unless it's "nabla", since "\\neq" looks like real code.
+ */
+export function restoreLostBackslashes(text) {
+  return String(text)
+    .replace(/\f/g, '\\f')
+    .replace(/[\b]/g, '\\b')
+    .replace(/\t(?=(?:ext\{|extbf\{|imes\b|heta\b|au\b|o(?:[\d\s}]|$)|riangle\b|ilde\{|frac\{))/g, '\\t')
+    .replace(/\r(?=(?:ho\b|ight(?:arrow)?\b))/g, '\\r')
+    .replace(/\n(?=abla\b)/g, '\\n');
+}

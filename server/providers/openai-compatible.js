@@ -35,7 +35,7 @@ class ProviderHttpError extends Error {
 }
 
 /** Returns { text, usage: { inputTokens, outputTokens, model } }. */
-export async function generate({ system, user, schema }) {
+export async function generate({ system, user, schema, effort }) {
   if (!modelName()) {
     throw new UserFacingError(500, 'AI is not set up yet. Set AI_MODEL in .env (for example AI_MODEL=qwen3-coder:30b) and restart the server.');
   }
@@ -46,7 +46,7 @@ export async function generate({ system, user, schema }) {
     type: 'json_schema',
     json_schema: { name: 'mathlens_answer', strict: true, schema },
   };
-  let options = { system, user, responseFormat: strict, includeUsage: true };
+  let options = { system, user, responseFormat: strict, includeUsage: true, effort };
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       return await requestCompletion(options);
@@ -66,7 +66,7 @@ export async function generate({ system, user, schema }) {
   return requestCompletion(options);
 }
 
-async function requestCompletion({ system, user, responseFormat, includeUsage }) {
+async function requestCompletion({ system, user, responseFormat, includeUsage, effort }) {
   const headers = { 'Content-Type': 'application/json' };
   if (process.env.AI_API_KEY) headers.Authorization = `Bearer ${process.env.AI_API_KEY}`;
 
@@ -93,7 +93,7 @@ async function requestCompletion({ system, user, responseFormat, includeUsage })
     body.temperature = 0.4;
   }
   // Optional: how hard a reasoning model thinks (none | low | medium | high). Lower = cheaper, faster.
-  if (process.env.AI_REASONING_EFFORT) body.reasoning_effort = process.env.AI_REASONING_EFFORT;
+  if (process.env.AI_REASONING_EFFORT) body.reasoning_effort = effort || process.env.AI_REASONING_EFFORT;
 
   const response = await fetch(`${baseUrl()}/chat/completions`, {
     method: 'POST',

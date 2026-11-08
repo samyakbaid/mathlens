@@ -7,7 +7,10 @@
 import { el } from '../lib/dom.js';
 import { icon } from '../lib/icons.js';
 import { renderMarkdown } from '../lib/markdown.js';
+import { railFor } from '../lib/controls.js';
 import { pathOf, markVisited } from '../topics.js';
+import { addLessonChat } from './lesson-chat.js';
+import { addResizeHandle, createPictureFrame, watchStage } from './lesson-player.js';
 
 /**
  * Shows one topic. Returns the topic's cleanup function (stops animations etc.).
@@ -55,14 +58,56 @@ export function showTopic(view, topic) {
   if (place) page.append(pathNav(place));
   view.append(page);
 
-  const cleanup = topic.mount({ plotArea, controls, lesson });
+  const cleanupTopic = topic.mount({ plotArea, controls, lesson });
   groupInstruments(controls);
   if (!lesson.children.length) lessonCard.classList.remove('fit');
   shareStageHeight(plotArea);
   lessonCard.addEventListener('lessonstep', (event) => {
     if (event.detail.byReader) bringIntoView(lessonCard);
   });
-  return cleanup;
+
+  // Follow-up questions. A changed picture takes the place of the built-in one until you go back.
+  const rail = railFor(lesson);
+  let stopChat = () => {};
+  let custom = null;
+  if (rail) {
+    lessonCard.insertBefore(addResizeHandle(lessonCard, null), lesson);
+    stopChat = addLessonChat({
+      rail,
+      card: lessonCard,
+      target: { topicId: topic.id, title: topic.title, steps: rail.steps.map((step) => ({ title: step.title, text: step.text })) },
+      picture: {
+        async show(html) {
+          if (!custom) {
+            custom = await createPictureFrame({ title: topic.title, card: lessonCard, stepCount: rail.steps.length, getStep: () => rail.index });
+            custom.onStep = (event) => custom.sendStep(event.detail.index);
+            lessonCard.addEventListener('lessonstep', custom.onStep);
+            plotArea.append(custom.frame);
+            custom.stopWatching = watchStage(plotArea, custom.frame);
+          }
+          custom.setHtml(html);
+          plotArea.classList.add('showing-custom');
+          if (controls.isConnected) controls.hidden = true;
+        },
+        reset() {
+          plotArea.classList.remove('showing-custom');
+          controls.hidden = false;
+          if (!custom) return;
+          lessonCard.removeEventListener('lessonstep', custom.onStep);
+          custom.stopWatching();
+          custom.frame.remove();
+          custom.destroy();
+          custom = null;
+          window.dispatchEvent(new Event('resize')); // the built-in plots redraw at their full size
+        },
+      },
+    });
+  }
+  return () => {
+    stopChat();
+    if (custom) custom.destroy();
+    cleanupTopic?.();
+  };
 }
 
 /**

@@ -53,7 +53,7 @@ function similarity(a, b) {
 }
 
 /** SQL condition + values that select the lessons this person owns. */
-function owner(req) {
+export function owner(req) {
   return req.user ? ['user_id = ?', [req.user.id]] : ['user_id IS NULL AND visitor_id = ?', [req.visitorId]];
 }
 
@@ -77,6 +77,7 @@ export function saveLesson(req, { question, key, sourceName, answer }) {
 export function claimVisitorLessons(userId, visitorId) {
   if (!visitorId) return;
   db.prepare('UPDATE lessons SET user_id = ? WHERE visitor_id = ? AND user_id IS NULL').run(userId, visitorId);
+  db.prepare('UPDATE followups SET user_id = ? WHERE visitor_id = ? AND user_id IS NULL').run(userId, visitorId);
 }
 
 function summary(row) {

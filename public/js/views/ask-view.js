@@ -216,10 +216,11 @@ export function showAskPage(view, { question = '', autoSubmit = false } = {}) {
       const free = answer.billing?.paidWith === 'saved';
       const note = el('p', 'lesson-note');
       note.innerHTML = icon('book', 14);
-      note.append(free ? 'You asked this before, so here is your saved lesson. No answer was used.' : 'Saved to your notebook. Asking this again is free.');
+      note.append(free ? 'You asked this before, so here is your saved lesson. No chat was used.' : 'Saved to your notebook. Asking this again is free.');
       stopLesson = await showLesson(result, answer, {
         kicker: documentFile ? `From ${documentFile.name}` : undefined,
         note,
+        lessonId: answer.lessonId,
       });
       result.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (err) {

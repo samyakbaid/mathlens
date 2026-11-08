@@ -96,6 +96,7 @@ function showSavedLesson(view, id) {
       stop = await showLesson(container, lesson.answer, {
         kicker: lesson.sourceName ? `From ${lesson.sourceName}` : `Saved lesson · ${lesson.steps} steps`,
         note,
+        lessonId: lesson.id,
       });
     })
     .catch((err) => container.replaceChildren(el('div', 'error-box', err.message)));

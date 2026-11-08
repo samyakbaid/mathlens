@@ -82,6 +82,23 @@ db.exec(`
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
+  -- Follow-up chats inside a lesson. A row with visualization_html is a changed picture.
+  CREATE TABLE IF NOT EXISTS followups (
+    id                 INTEGER PRIMARY KEY,
+    user_id            INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    visitor_id         TEXT,
+    lesson_id          INTEGER REFERENCES lessons(id) ON DELETE CASCADE,  -- a saved AI lesson, or
+    topic_id           TEXT,                                               -- a built-in lesson
+    step_index         INTEGER NOT NULL DEFAULT 0,
+    question           TEXT NOT NULL,
+    question_key       TEXT NOT NULL,
+    reply              TEXT NOT NULL,
+    visualization_html TEXT,
+    created_at         TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS followups_lesson ON followups(lesson_id);
+  CREATE INDEX IF NOT EXISTS followups_topic ON followups(topic_id, user_id, visitor_id);
+
   CREATE TABLE IF NOT EXISTS payments (
     id                  INTEGER PRIMARY KEY,
     user_id             INTEGER NOT NULL REFERENCES users(id),
@@ -93,6 +110,11 @@ db.exec(`
     paid_at             TEXT
   );
 `);
+
+// Databases made before follow-up chats need the column that says what each charge was for
+if (!db.prepare('PRAGMA table_info(usage)').all().some((column) => column.name === 'kind')) {
+  db.exec("ALTER TABLE usage ADD COLUMN kind TEXT NOT NULL DEFAULT 'lesson'"); // 'lesson' | 'followup'
+}
 
 /** Run `fn` inside a transaction: all of its writes happen, or none do. */
 export function transaction(fn) {

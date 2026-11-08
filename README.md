@@ -164,9 +164,9 @@ Tips:
 
 Only **Ask AI** costs money to run, so only it is limited. Built-in topics and Graph Lab stay free and need no account.
 
-1. **Trial:** 2 AI answers without an account (counted per browser, with a per-network daily cap).
-2. **Sign up** (email + password, or Google): 3 more free answers. Free sign-up answers are limited to 3 new accounts per network per day, so they can't be farmed.
-3. **Credits:** after that, people top up any amount from ₹10 with Razorpay (UPI, cards, netbanking). Each answer is charged at **its real AI cost** (tokens × the model's price, converted to ₹) plus 3% to cover Razorpay's fee. With gpt-6-luna on medium reasoning effort a lesson costs about ₹0.50, so ₹10 ≈ 20 lessons. The top-up dialog shows the live average.
+1. **Trial:** 2 chats without an account (counted per browser, with a per-network daily cap).
+2. **Sign up** (email + password, or Google): 3 more free chats. Free sign-up answers are limited to 3 new accounts per network per day, so they can't be farmed.
+3. **Credits:** after that, people top up any amount from ₹10 with Razorpay (UPI, cards, netbanking). Each answer is charged at **its real AI cost** (tokens × the model's price, converted to ₹) plus 3% to cover Razorpay's fee. A chat is one message to the tutor: a new lesson, a follow-up question or a change to a picture. With gpt-6-luna on medium reasoning effort a new lesson costs about ₹0.50, so ₹10 ≈ 20 chats, and a quick follow-up usually costs less. Prices are quoted at the lesson price. The top-up dialog shows the live average.
 
 Failed answers are never charged, and only one question per account runs at a time. All limits and prices are in `.env.example`.
 
@@ -274,3 +274,12 @@ The AI writes one running example worked by hand, and only then the formula (the
 - If a lesson takes over 20 seconds, the server sends spaces to keep the connection open, because Cloudflare gives up after about 125 seconds of silence.
 
 To compare models, set `AI_MODEL` and `AI_REASONING_EFFORT`. Prices live in `server/billing.js`, and customers are charged each lesson's real cost, so the displayed average follows the model.
+
+## Follow-up chats
+
+Every lesson, AI or built-in, has an **Ask a question** button that opens a chat in place of the step text, so the picture stays in view (`public/js/views/lesson-chat.js`, `server/followups.js`).
+
+- A question gets a quick answer from one small AI call that doesn't carry the picture's code (about ₹0.04 and 5 seconds with gpt-6-luna). `AI_CHAT_EFFORT` can set a different effort from lessons, but in testing low effort barely saved money and made more mistakes.
+- A request to change the picture makes a second call that rewrites it. In an AI lesson that edits the current picture. In a built-in lesson it builds a new one that replaces the hand-made picture until the reader goes back. Changed pictures go through the same compile check as lessons, and the original is always one click away.
+- Each message is one chat at its real cost. Asking the same thing about the same step again is free, and a failed answer is never charged.
+- Chats are saved in the `followups` table with the lesson or topic, and a reopened lesson shows its latest changed picture.

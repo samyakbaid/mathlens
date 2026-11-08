@@ -3,9 +3,9 @@
 //   anthropic          → Claude (default)
 //   openai-compatible  → any OpenAI-compatible server: Ollama, LM Studio, vLLM, OpenRouter, ...
 
-import { SYSTEM_PROMPT } from './prompt.js';
+import { SYSTEM_PROMPT, FOLLOW_UP_PROMPT, PICTURE_CHANGE_PROMPT } from './prompt.js';
 import { UserFacingError } from './errors.js';
-import { repairLatexInScripts } from './latex-repair.js';
+import { repairLatexInScripts, restoreLostBackslashes } from './latex-repair.js';
 import { checkScripts, compileError, replaceScript } from './viz-check.js';
 import * as anthropic from './providers/anthropic.js';
 import * as openaiCompatible from './providers/openai-compatible.js';
@@ -120,12 +120,80 @@ async function repairPicture(provider, answer) {
     });
     total.inputTokens += usage.inputTokens;
     total.outputTokens += usage.outputTokens;
-    const fixed = String(parseJsonLoosely(text).script ?? '');
+    const fixed = repairLatexInScripts(`<script>${restoreLostBackslashes(String(parseJsonLoosely(text).script ?? ''))}</script>`).replace(/^<script>|<\/script>$/g, '');
     const remaining = compileError(fixed);
     if (!fixed || remaining) throw new SyntaxError(`The picture's code could not be repaired: ${remaining ?? 'empty reply'}`);
     answer.visualizationHtml = replaceScript(answer.visualizationHtml, code, fixed);
   }
   return total;
+}
+
+const FOLLOW_UP_SCHEMA = {
+  type: 'object',
+  properties: {
+    reply: { type: 'string' },
+    changePicture: { type: 'boolean' },
+    pictureRequest: { type: 'string' },
+  },
+  required: ['reply', 'changePicture', 'pictureRequest'],
+  additionalProperties: false,
+};
+const PICTURE_SCHEMA = {
+  type: 'object',
+  properties: { visualizationHtml: { type: 'string' } },
+  required: ['visualizationHtml'],
+  additionalProperties: false,
+};
+
+function describeLesson(lesson, stepIndex) {
+  const steps = lesson.steps
+    .map((step, i) => `Step ${i + 1}${i === stepIndex ? ' (the reader is here)' : ''}: ${step.title}\n${step.explanation}`)
+    .join('\n\n');
+  const kind = lesson.builtIn ? "This is one of the site's built-in lessons, with a hand-made picture you can't see." : lesson.fromDocument ? 'This lesson was written from a document the reader uploaded. You only have the lesson, not the document.' : 'You wrote this lesson earlier.';
+  return `${kind}\n<<<LESSON\nTitle: ${lesson.title}\n${lesson.intro ? `Intro: ${lesson.intro}\n` : ''}\n${steps}\nLESSON>>>`;
+}
+
+/**
+ * Answer a follow-up inside a lesson. Most are questions, so the first call is small and quick: it
+ * doesn't carry the picture's code. Only when the reader wants the picture changed does a second
+ * call rewrite it, and if that can't be made to work the whole answer fails and isn't charged.
+ * @returns {Promise<{reply: string, visualizationHtml: string, usage: object}>}
+ */
+export async function answerFollowUp({ lesson, stepIndex, question, currentHtml, history }) {
+  const provider = getProvider();
+  const earlier = history.length ? `Earlier in this chat:\n${history.map((turn) => `Reader: ${turn.question}\nYou: ${turn.reply}`).join('\n\n')}\n\n` : '';
+  const lessonText = describeLesson(lesson, stepIndex);
+
+  const first = await provider.generate({
+    system: FOLLOW_UP_PROMPT,
+    user: `${lessonText}\n\n${earlier}The reader is on step ${stepIndex + 1} of ${lesson.steps.length} and says:\n${question}`,
+    schema: FOLLOW_UP_SCHEMA,
+    effort: process.env.AI_CHAT_EFFORT || undefined,
+  });
+  const parsed = parseJsonLoosely(first.text);
+  const reply = typeof parsed.reply === 'string' ? restoreLostBackslashes(parsed.reply).trim() : '';
+  if (!reply) throw new SyntaxError('Model output is missing the reply');
+  const usage = { ...first.usage };
+
+  let visualizationHtml = '';
+  if (parsed.changePicture === true) {
+    const picture = await provider.generate({
+      system: PICTURE_CHANGE_PROMPT,
+      user: `${lessonText}\n\nThe reader is on step ${stepIndex + 1} and asked: ${question}\nThe change to make: ${String(parsed.pictureRequest ?? question)}\n\n${currentHtml ? `The current picture:\n<<<PICTURE\n${currentHtml}\nPICTURE>>>` : 'There is no code to edit, so build a new picture for this whole lesson, with one scene for each step.'}`,
+      schema: PICTURE_SCHEMA,
+    });
+    usage.inputTokens += picture.usage.inputTokens;
+    usage.outputTokens += picture.usage.outputTokens;
+    const changed = { visualizationHtml: repairLatexInScripts(restoreLostBackslashes(String(parseJsonLoosely(picture.text).visualizationHtml ?? ''))) };
+    if (!changed.visualizationHtml.trim()) throw new SyntaxError('Model output is missing the changed picture');
+    const repairUsage = await repairPicture(provider, changed);
+    if (repairUsage) {
+      usage.inputTokens += repairUsage.inputTokens;
+      usage.outputTokens += repairUsage.outputTokens;
+    }
+    visualizationHtml = changed.visualizationHtml;
+  }
+  return { reply, visualizationHtml, usage };
 }
 
 /** Parse JSON even if the model wrapped it in ```json fences, <think> tags or extra prose. */
@@ -146,7 +214,7 @@ function parseJsonLoosely(text) {
 /** Make sure every field has the right type, so the page never breaks on a sloppy answer. */
 function normalizeAnswer(raw) {
   if (!raw || typeof raw !== 'object') throw new SyntaxError('Model output is not an object');
-  const str = (v) => (typeof v === 'string' ? v : v == null ? '' : String(v));
+  const str = (v) => restoreLostBackslashes(typeof v === 'string' ? v : v == null ? '' : String(v));
 
   let steps = Array.isArray(raw.steps)
     ? raw.steps

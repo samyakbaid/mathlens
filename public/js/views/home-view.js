@@ -33,8 +33,8 @@ export function showHome(view) {
       </section>
       <div class="continue-slot"></div>
       <a class="price-strip" href="/pricing">
-        <span><strong>Free to start.</strong> The lessons and Graph Lab are always free. The tutor gives you <b data-fill="trial">2</b> free lessons, then <b data-fill="free">3</b> more when you sign up.</span>
-        <span class="price-strip-cta">After that, about <b data-fill="average">₹0.20</b> a lesson ${icon('right', 14)}</span>
+        <span><strong>Free to start.</strong> The lessons and Graph Lab are always free. The tutor gives you <b data-fill="trial">2</b> free chats, then <b data-fill="free">3</b> more when you sign up.</span>
+        <span class="price-strip-cta">After that, about <b data-fill="average">₹0.20</b> a chat ${icon('right', 14)}</span>
       </a>
       <section class="paths-section">
         <header class="section-head">
@@ -50,11 +50,11 @@ export function showHome(view) {
         </a>
         <a class="tool-card" href="#/ask">
           ${askIllustration()}
-          <div><h3>Ask the tutor</h3><p>Ask about any idea, or drop in a paper you're reading. You get a slow, step-by-step lesson with a picture that moves as you go.</p><span class="tool-link">Ask a question ${icon('right', 14)}</span></div>
+          <div><h3>Ask the tutor</h3><p>Ask about any idea, or drop in a paper you're reading. You get a slow, step-by-step lesson with a picture that moves as you go, and you can ask follow-up questions or have the picture changed.</p><span class="tool-link">Ask a question ${icon('right', 14)}</span></div>
         </a>
         <a class="tool-card" href="#/notebook">
           ${notebookIllustration()}
-          <div><h3>Your notebook</h3><p>Every lesson the tutor makes for you is kept here, so you can come back to it later without using another answer.</p><span class="tool-link">Open your notebook ${icon('right', 14)}</span></div>
+          <div><h3>Your notebook</h3><p>Every lesson the tutor makes for you is kept here, with your follow-up questions, so you can come back later without using another chat.</p><span class="tool-link">Open your notebook ${icon('right', 14)}</span></div>
         </a>
       </section>
     </div>

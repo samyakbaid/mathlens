@@ -628,7 +628,52 @@ kbd {
 .rail-focus:empty { display: none; }
 .rail-focus .icon { margin-top: 3px; color: var(--text); }
 .rail-focus strong { font-weight: 600; margin-right: 3px; }
-.rail-nav { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.rail-nav { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.rail-ask { gap: 7px; white-space: nowrap; }
+.rail-ask.active { background: var(--accent-soft); border-color: var(--accent); }
+.rail-card.with-panel > .rail-body, .rail-card.with-panel > .rail-focus { display: none; }
+/* A changed picture takes the place of a built-in lesson's plots */
+.lesson-stage.showing-custom > :not(.ai-frame):not(.scroll-more) { display: none !important; }
+.instruments[hidden] { display: none; }
+
+/* The chat inside a lesson, in the space the step text normally uses */
+.chat { display: flex; flex-direction: column; gap: 8px; min-width: 0; min-height: 0; }
+.chat-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; font-size: 13.5px; }
+.chat-step { margin-right: auto; font: 600 11.5px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); }
+.chat-head .link-button[hidden] { display: none; }
+.chat-thread { flex: 1 1 0; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 6px; scroll-padding-top: 4px; }
+.chat-thread:focus { outline: none; }
+.chat-thread::-webkit-scrollbar { width: 12px; }
+.chat-thread::-webkit-scrollbar-thumb { background: var(--faint); border-radius: 8px; border: 3px solid var(--surface-2); }
+.chat-thread::-webkit-scrollbar-track { background: var(--surface-2); border-radius: 8px; }
+@supports not selector(::-webkit-scrollbar) {
+  .chat-thread { scrollbar-width: auto; scrollbar-color: var(--faint) var(--surface-2); }
+}
+.chat-empty p { margin: 0 0 8px; color: var(--muted); font-size: 15px; }
+.chat-empty[hidden] { display: none; }
+.chat-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chat-question { align-self: flex-end; max-width: 85%; padding: 7px 12px; border-radius: 12px 12px 3px 12px; background: var(--accent-soft); font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; white-space: pre-wrap; }
+.chat-question-step { display: block; font: 600 10.5px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); }
+.chat-reply { font-size: 15.5px; line-height: 1.62; max-width: 80ch; }
+.chat-words p { margin: 0 0 8px; }
+.chat-words .katex-display { margin: 10px 0; overflow-x: auto; overflow-y: hidden; padding: 2px 0; }
+.chat-words ul, .chat-words ol { margin: 0 0 8px; padding-left: 22px; }
+.chat-picture-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 6px 10px; border-radius: 9px; background: var(--highlight); font-size: 13.5px; }
+.chat-picture-row .link-button:disabled { color: var(--muted); cursor: default; text-decoration: none; }
+.chat-note { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+.chat-thinking { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 14.5px; }
+.chat-dots { display: inline-flex; gap: 4px; }
+.chat-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: chat-dot 1.2s ease-in-out infinite; }
+.chat-dots i:nth-child(2) { animation-delay: 0.15s; }
+.chat-dots i:nth-child(3) { animation-delay: 0.3s; }
+@keyframes chat-dot { 0%, 70%, 100% { opacity: 0.25; transform: translateY(0); } 35% { opacity: 1; transform: translateY(-3px); } }
+@media (prefers-reduced-motion: reduce) { .chat-dots i { animation: none; opacity: 0.7; } }
+.chat-form { flex: none; display: flex; align-items: flex-end; gap: 8px; }
+.chat-input { flex: 1 1 auto; min-width: 0; min-height: 38px; max-height: 110px; padding: 8px 12px; border-radius: 10px; border: 1.5px solid var(--border-strong); background: var(--surface); color: var(--text); font: 400 15px/1.4 var(--sans); resize: none; }
+.chat-input:focus { outline: none; border-color: var(--accent); }
+.chat-form .btn { flex: none; height: 38px; }
+.chat-hint { flex: none; margin: 0; color: var(--muted); font-size: 12.5px; }
+.chat-error { margin: 0; font-size: 14px; }
 
 /* On desktop the lesson card is exactly one screen tall: the visual takes what the narration
    leaves, so the picture and the step text are always visible together. */
@@ -690,6 +735,20 @@ kbd {
   .rail-focus { grid-area: focus; margin-top: 10px; }
   .rail-nav { grid-area: nav; justify-content: flex-start; margin-top: 10px; align-self: end; }
   .rail-label { -webkit-line-clamp: 1; }
+}
+
+/* The chat spans the text and "Look for" columns, and the Ask button sits under Back and Next */
+@media (min-width: 900px) {
+  .rail-card > .chat { grid-column: 2 / -1; grid-row: 1 / -1; }
+  .rail-ask { flex: 1 1 100%; justify-content: center; }
+}
+@media (max-width: 899px) {
+  .chat-thread { max-height: 46vh; min-height: 120px; }
+  .rail-card > .chat { margin-top: 10px; }
+}
+@media (min-width: 721px) and (min-height: 560px) and (max-width: 899px) {
+  .lesson.fit .rail-card > .chat { flex: 1 1 0; }
+  .chat-thread { max-height: none; }
 }
 
 /* Very wide screens: "Look for" moves beside the text, so the explanation gets the full height */

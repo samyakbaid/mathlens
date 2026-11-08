@@ -305,6 +305,10 @@ export function addMatrixInput(panel, { label, value, onInput, digits = 2 }) {
  *   ], { onChange: (index) => {...} });
  *   lesson.go(0);
  */
+// Lets a page find the rail a topic made inside its container
+const rails = new WeakMap();
+export const railFor = (container) => rails.get(container);
+
 export function addSteps(container, steps, { onChange } = {}) {
   const rail = el('section', 'rail');
   rail.setAttribute('aria-label', 'Lesson steps');
@@ -408,11 +412,25 @@ export function addSteps(container, steps, { onChange } = {}) {
   };
   document.addEventListener('keydown', onKey);
 
-  return {
+  let panel = null;
+  const api = {
     go,
     get index() {
       return index;
     },
     element: rail,
+    steps,
+    /** Add a button beside Back and Next. */
+    addAction: (button) => nav.append(button),
+    /** Show an element in place of the step text, or pass null to bring the text back. */
+    showPanel(next) {
+      panel?.remove();
+      panel = next;
+      card.classList.toggle('with-panel', Boolean(next));
+      if (next) card.append(next);
+      else requestAnimationFrame(markOverflow);
+    },
   };
+  rails.set(container, api);
+  return api;
 }

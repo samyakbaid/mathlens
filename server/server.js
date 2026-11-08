@@ -12,6 +12,8 @@ import path from 'node:path';
 import { explainConcept, describeError, getProvider } from './ai.js';
 import { config } from './config.js';
 import { emailConfigured } from './email.js';
+import { keepAlive } from './keep-alive.js';
+import { followupsRouter } from './followups.js';
 import { identify, sameOriginOnly, authRouter, publicUser } from './auth.js';
 import { reserveAnswer, trialStatus, averageChargePaise } from './billing.js';
 import { paymentsRouter, paymentsEnabled, handleWebhook } from './payments.js';
@@ -23,7 +25,6 @@ const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(import.meta.dirname, '..', 'public');
 const MAX_QUESTION_LENGTH = 2000;
 
-const KEEP_ALIVE_MS = Number(process.env.KEEP_ALIVE_MS) || 20000;
 const MAX_DOCUMENT_CHARS = 120000; // about 30k tokens: plenty for a paper, and still cheap
 
 // Answers still being written, per account and question. A reload while waiting joins the same
@@ -65,6 +66,7 @@ app.use('/api', sameOriginOnly, identify);
 app.use('/api/auth', authRouter);
 app.use('/api/payments', paymentsRouter);
 app.use('/api/lessons', lessonsRouter);
+app.use('/api/followups', followupsRouter);
 
 /** Everything the browser needs to show the account bar, limits and prices. */
 app.get('/api/me', (req, res) => {
@@ -153,21 +155,7 @@ app.post('/api/ask', async (req, res) => {
   work.catch(() => {}); // handled below; don't let the shared copy crash the server
   inFlight.set(`${account}|${key}`, work);
 
-  // Cloudflare gives up after about 125 seconds of silence. A slow lesson sends harmless spaces
-  // (JSON allows them before the object) so the connection stays open while it's being written.
-  let keepingAlive = false;
-  const keepAlive = setInterval(() => {
-    if (!keepingAlive) {
-      keepingAlive = true;
-      res.status(200).type('application/json');
-    }
-    res.write(' ');
-  }, KEEP_ALIVE_MS);
-  const finish = (status, body) => {
-    clearInterval(keepAlive);
-    if (keepingAlive) return res.end(JSON.stringify({ ...body, httpStatus: status }));
-    return res.status(status).json(body);
-  };
+  const finish = keepAlive(res);
 
   try {
     const { answer, billing, lessonId } = await work;

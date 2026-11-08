@@ -47,7 +47,7 @@ export function mountAccountBar(container) {
     const header = el('div', 'account-menu-head');
     header.append(el('strong', '', user.name || user.email), el('span', 'muted', user.email));
     const stats = el('div', 'account-menu-stats');
-    stats.append(stat('Free answers', String(user.freeAnswersLeft)), stat('Balance', rupees(user.balancePaise)));
+    stats.append(stat('Free chats', String(user.freeAnswersLeft)), stat('Balance', rupees(user.balancePaise)));
     const topup = el('button', 'btn small primary', 'Add credits');
     const out = el('button', 'btn small ghost', 'Log out');
     topup.type = out.type = 'button';
@@ -190,7 +190,7 @@ export function openAuthDialog({ mode = 'signup', reason = '' } = {}) {
         return;
       }
       title.textContent = isSignup ? 'Make a free account' : 'Welcome back';
-      const perk = pricing?.freeAnswersAfterSignup ? `Sign up and your next ${pricing.freeAnswersAfterSignup} lessons are free. Your saved lessons come with you.` : '';
+      const perk = pricing?.freeAnswersAfterSignup ? `Sign up and your next ${pricing.freeAnswersAfterSignup} chats with the tutor are free. Your saved lessons come with you.` : '';
       subtitle.textContent = reason || (isSignup ? perk : 'Log in to keep asking the tutor and see your saved lessons.');
       nameField.row.hidden = !isSignup;
       passwordField.input.autocomplete = isSignup ? 'new-password' : 'current-password';
@@ -338,12 +338,12 @@ export async function openCreditsDialog({ reason = '' } = {}) {
 
     const dialog = createDialog('credits-modal');
     const title = el('h2', 'modal-title', 'Add credits');
-    const subtitle = el('p', 'modal-subtitle', reason || `Your balance is ${rupees(user.balancePaise)}. You only pay for the lessons you ask for.`);
+    const subtitle = el('p', 'modal-subtitle', reason || `Your balance is ${rupees(user.balancePaise)}. You only pay for what you ask the tutor.`);
 
     // Why it's worth it, in real numbers
     const reasons = el('ul', 'worth-it');
     for (const text of [
-      `₹20 covers about ${answersFor(2000)} lessons, roughly the price of a cup of chai.`,
+      `₹20 covers about ${answersFor(2000)} chats, roughly the price of a cup of chai. A chat is a new lesson, a follow-up question or a change to a picture.`,
       'Every lesson is saved in your notebook, and reopening it costs nothing.',
       "There's no subscription. You pay once and your credit never runs out.",
     ]) {
@@ -354,7 +354,7 @@ export async function openCreditsDialog({ reason = '' } = {}) {
     }
     const cost = el('p', 'cost-explainer');
     cost.append(
-      `A lesson costs about ${rupees(average)} on average: what the AI charges us${pricing?.markup ? `, plus ${Math.round(pricing.markup * 100)}% for the payment fee` : ''}. `,
+      `A new lesson costs about ${rupees(average)} and a quick follow-up usually costs less: what the AI charges us${pricing?.markup ? `, plus ${Math.round(pricing.markup * 100)}% for the payment fee` : ''}. `,
     );
     const pricingLink = el('a', '', 'How pricing works');
     pricingLink.href = '/pricing';
@@ -365,7 +365,7 @@ export async function openCreditsDialog({ reason = '' } = {}) {
     const buttons = PRESET_AMOUNTS.map((value) => {
       const button = el('button', 'amount-option');
       button.type = 'button';
-      button.append(el('strong', '', `₹${value}`), el('span', '', `about ${answersFor(value * 100)} lessons`));
+      button.append(el('strong', '', `₹${value}`), el('span', '', `about ${answersFor(value * 100)} chats`));
       button.addEventListener('click', () => {
         amount = value;
         custom.value = '';
@@ -398,7 +398,7 @@ export async function openCreditsDialog({ reason = '' } = {}) {
       const valid = Number.isFinite(amount) && amount >= min && amount <= max;
       pay.disabled = !valid || !integrations?.payments;
       pay.textContent = valid ? `Pay ₹${Math.round(amount)} with UPI, card or netbanking` : `Choose ₹${min} to ₹${max}`;
-      summary.textContent = valid ? `₹${Math.round(amount)} is about ${answersFor(Math.round(amount) * 100)} lessons at today's average.` : '';
+      summary.textContent = valid ? `₹${Math.round(amount)} is about ${answersFor(Math.round(amount) * 100)} chats at today's prices.` : '';
       if (!integrations?.payments) error.textContent = 'Payments are not set up on this server yet (RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET).';
     }
 

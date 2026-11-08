@@ -27,3 +27,28 @@ export async function askAI(question, topics, signal, document = null) {
   }
   return data;
 }
+
+/** Ask something inside a lesson, or ask for its picture to change. Counts as one chat. */
+export async function askFollowUp(body) {
+  const response = await fetch('/api/followups', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await response.json().catch(() => ({}));
+  const status = data.httpStatus ?? response.status;
+  if (!response.ok || status >= 400 || data.error) {
+    const error = new Error(data.error || `Server error (${status})`);
+    error.code = data.code;
+    error.status = status;
+    throw error;
+  }
+  return data;
+}
+
+/** The chat so far for a lesson ({ lessonId }) or a built-in topic ({ topicId }). */
+export async function listFollowUps(source) {
+  const response = await fetch(`/api/followups?${new URLSearchParams(source)}`);
+  if (!response.ok) return [];
+  return (await response.json()).items ?? [];
+}

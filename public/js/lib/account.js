@@ -106,17 +106,17 @@ export function answersFor(paise) {
   return Math.max(0, Math.floor(paise / average));
 }
 
-/** One short line describing what the person can still do, e.g. "2 free tries left". */
+/** One short line describing what the person can still do, e.g. "2 free chats left". */
 export function allowanceText() {
   const { user, trial } = account;
   if (!account.loaded) return '';
   if (!user) {
     return trial?.left > 0
-      ? `${trial.left} free ${trial.left === 1 ? 'try' : 'tries'} left, no account needed`
-      : 'Free tries used. Sign up (free) to keep going.';
+      ? `${trial.left} free ${trial.left === 1 ? 'chat' : 'chats'} left, no account needed`
+      : 'Free chats used. Sign up (free) to keep going.';
   }
-  if (user.freeAnswersLeft > 3) return `${user.freeAnswersLeft} free lessons left`;
-  if (user.freeAnswersLeft > 0) return `${user.freeAnswersLeft} free ${user.freeAnswersLeft === 1 ? 'lesson' : 'lessons'} left. After that, ₹20 covers about ${answersFor(2000)} more.`;
-  if (user.balancePaise > 0) return `Balance ${rupees(user.balancePaise)}, about ${answersFor(user.balancePaise)} lessons`;
-  return `₹20 covers about ${answersFor(2000)} more lessons`;
+  if (user.freeAnswersLeft > 3) return `${user.freeAnswersLeft} free chats left`;
+  if (user.freeAnswersLeft > 0) return `${user.freeAnswersLeft} free ${user.freeAnswersLeft === 1 ? 'chat' : 'chats'} left. After that, ₹20 covers about ${answersFor(2000)} more.`;
+  if (user.balancePaise > 0) return `Balance ${rupees(user.balancePaise)}, about ${answersFor(user.balancePaise)} chats`;
+  return `₹20 covers about ${answersFor(2000)} more chats`;
 }

@@ -126,32 +126,34 @@ pagesRouter.get('/pricing', (req, res) => {
   const lessonsFor = (paise) => Math.max(1, Math.floor(paise / average));
   const rows = [10, 20, 50, 100]
     .filter((r) => r >= config.minTopupRupees)
-    .map((r) => `<tr><td>₹${r}</td><td>about ${lessonsFor(r * 100)} lessons</td></tr>`)
+    .map((r) => `<tr><td>₹${r}</td><td>about ${lessonsFor(r * 100)} chats</td></tr>`)
     .join('');
   res.send(layout({
     title: 'Pricing',
     path: '/pricing',
-    description: `The lessons and Graph Lab are free. Tutor lessons cost about ${rupees(average)} each after your free ones.`,
+    description: `The built-in lessons and Graph Lab are free. Chats with the tutor cost about ${rupees(average)} each after your free ones.`,
     body: `
 <p class="kicker">Pricing</p>
-<h1>Free to start. <em>About ${rupees(average)} a lesson after that.</em></h1>
-<p class="lede">The built-in lessons and Graph Lab are free for everyone. You only pay for the tutor, and only for the lessons you ask for.</p>
+<h1>Free to start. <em>About ${rupees(average)} a chat after that.</em></h1>
+<p class="lede">The built-in lessons and Graph Lab are free for everyone. You only pay for the tutor, and only for what you ask it.</p>
 <div class="price-cards">
-  <div class="price-card"><span class="price-label">Try it</span><strong>${config.trialAnswers} free</strong><p>tutor lessons without an account.</p></div>
+  <div class="price-card"><span class="price-label">Try it</span><strong>${config.trialAnswers} free</strong><p>chats with the tutor, without an account.</p></div>
   <div class="price-card"><span class="price-label">Sign up</span><strong>${config.freeAnswersAfterSignup} more free</strong><p>when you make a free account with Google or email.</p></div>
-  <div class="price-card highlight"><span class="price-label">After that</span><strong>${rupees(average)} a lesson</strong><p>on average. Top up any amount from ₹${config.minTopupRupees}.</p></div>
+  <div class="price-card highlight"><span class="price-label">After that</span><strong>${rupees(average)} a chat</strong><p>or less. Top up any amount from ₹${config.minTopupRupees}.</p></div>
 </div>
 <div class="legal">
 <h2>What your money buys</h2>
 <table class="price-table"><thead><tr><th>Top up</th><th>At today's average</th></tr></thead><tbody>${rows}</tbody></table>
-<p>₹20 is about the price of a cup of chai, and it covers about ${lessonsFor(2000)} lessons.</p>
+<p>₹20 is about the price of a cup of chai, and it covers about ${lessonsFor(2000)} chats.</p>
+<h2>What's a chat?</h2>
+<p>One message to the tutor. That can be a question that gets you a new lesson, a follow-up question inside any lesson, or a request to change how a lesson's picture works. Asking something you've already asked, or reopening a saved lesson, doesn't use a chat.</p>
 <h2>How the price is worked out</h2>
-<p>Each lesson costs what the AI charges us to write it${config.markup ? `, plus ${Math.round(config.markup * 100)}% to cover the payment fee` : ''}. A short lesson costs less than the average and a long one with a 3D picture costs a little more. The average above updates as people use MathLens.</p>
+<p>Each chat costs what the AI charges us to write the answer${config.markup ? `, plus ${Math.round(config.markup * 100)}% to cover the payment fee` : ''}. The figures above are based on a new lesson, the biggest kind of chat. A quick follow-up usually costs much less, so your money often goes further, and a long lesson can cost a little more. The average above updates as people use MathLens.</p>
 <h2>Good to know</h2>
 <ul>
 <li>There's no subscription, and nothing renews by itself.</li>
 <li>Your credit doesn't expire.</li>
-<li>Every lesson is saved in your notebook. Reopening it, or asking the exact same question again, is free.</li>
+<li>Every lesson and follow-up is saved in your notebook. Reopening it, or asking the exact same question again, is free.</li>
 <li>Lessons are written by AI and can contain mistakes, and a mistake doesn't qualify for a refund or credit.</li>
 <li>You pay through Razorpay with UPI, cards or net banking. Prices are in Indian rupees.${config.businessName ? ` Your bank statement may show the payment as ${esc(config.businessName)}, the owner of MathLens.` : ''}</li>
 <li>Credit can't be refunded once you've bought it. See the <a href="/refunds">refund policy</a>.</li>
@@ -197,9 +199,9 @@ ${updated()}
 <h2>1. Who we are</h2>
 <p>MathLens ("we", "us") is run by ${name}${config.businessAddress ? `, ${esc(config.businessAddress)}` : ''}. By using the website you agree to these terms. If you don't agree with them, please don't use MathLens.</p>
 <h2>2. Your account</h2>
-<p>You need a free account to keep using the tutor after the free tries. Keep your password to yourself, because you're responsible for what happens in your account. Each account is for one person. We may suspend accounts that are used to collect free credit unfairly or to misuse the service.</p>
+<p>You need a free account to keep using the tutor after the free chats. Keep your password to yourself, because you're responsible for what happens in your account. Each account is for one person. We may suspend accounts that are used to collect free credit unfairly or to misuse the service.</p>
 <h2>3. Credit and payments</h2>
-<p>Tutor lessons are paid for with prepaid credit, which you buy through our payment partner, Razorpay. Each lesson is charged at its actual cost, as described on the <a href="/pricing">pricing page</a>. Credit has no cash value outside MathLens, can't be transferred to another person and doesn't expire. Credit can't be refunded once bought. See the <a href="/refunds">refund policy</a>. Free lessons and sign-up credit are a gift and may change over time.</p>
+<p>Chats with the tutor (a new lesson, a follow-up question or a change to a picture) are paid for with prepaid credit, which you buy through our payment partner, Razorpay. Each chat is charged at its actual cost, as described on the <a href="/pricing">pricing page</a>. Credit has no cash value outside MathLens, can't be transferred to another person and doesn't expire. Credit can't be refunded once bought. See the <a href="/refunds">refund policy</a>. Free lessons and sign-up credit are a gift and may change over time.</p>
 <h2>4. Lessons are written by AI</h2>
 <p>The tutor's lessons are written by an AI model. They're usually right, but they can contain mistakes. Check important results yourself, especially for exams, assignments or work, and don't use MathLens as the basis for medical, legal or financial decisions. A mistake in a lesson doesn't qualify for a refund or credit. If you have a problem, email us and we'll look into it.</p>
 <h2>5. What you send us</h2>
@@ -207,7 +209,7 @@ ${updated()}
 <h2>6. Our content</h2>
 <p>The built-in lessons, the design and the code of MathLens belong to ${name}. You're welcome to use lessons for your own learning and to share links to them.</p>
 <h2>7. Changes</h2>
-<p>We may change features, prices or these terms. A new price only applies to lessons asked after the change, and credit you've already bought keeps its rupee value. If we change these terms in an important way, we'll update the date at the top of this page. MathLens may sometimes be unavailable, for example during maintenance.</p>
+<p>We may change features, prices or these terms. A new price only applies to chats after the change, and credit you've already bought keeps its rupee value. If we change these terms in an important way, we'll update the date at the top of this page. MathLens may sometimes be unavailable, for example during maintenance.</p>
 <h2>8. Liability</h2>
 <p>MathLens is provided as it is. As far as the law allows, our total liability to you for any claim is limited to the amount you paid us in the three months before the claim.</p>
 <h2>9. Law</h2>
@@ -234,15 +236,15 @@ ${updated()}
 <h2>What we collect</h2>
 <ul>
 <li><strong>Your account.</strong> Your email address and, if you give it, your name. If you sign up with email, your password is stored only as a scrambled one-way hash. If you sign in with Google, we receive your Google account ID, email address and name from Google.</li>
-<li><strong>Your lessons.</strong> The questions you ask and the lessons the tutor writes, so they can be saved in your notebook.</li>
+<li><strong>Your lessons and chats.</strong> The questions you ask, the lessons and replies the tutor writes, and any pictures it changes for you, so they can be saved in your notebook.</li>
 <li><strong>Documents you upload.</strong> Your browser reads the text out of the file; the file itself never leaves your device. The text is sent along with your question to write the lesson. We keep the lesson and a short fingerprint of the text (so we can recognise the same document again), not the text itself.</li>
 <li><strong>Payments.</strong> The amount and Razorpay's order and payment IDs. Your card, UPI and bank details go straight to Razorpay; we never see them.</li>
-<li><strong>Usage.</strong> For each lesson, how much it cost to make, and the IP address it came from. We use the IP address to stop people collecting free lessons unfairly.</li>
-<li><strong>Cookies and browser storage.</strong> A cookie that keeps you logged in, and a cookie that counts free tries before you sign up. Your browser also remembers your light or dark theme and which lessons you've opened. We don't use advertising or tracking cookies.</li>
+<li><strong>Usage.</strong> For each chat, how much it cost to answer, and the IP address it came from. We use the IP address to stop people collecting free chats unfairly.</li>
+<li><strong>Cookies and browser storage.</strong> A cookie that keeps you logged in, and a cookie that counts free chats before you sign up. Your browser also remembers your light or dark theme and which lessons you've opened. We don't use advertising or tracking cookies.</li>
 </ul>
 <h2>Who else sees it</h2>
 <ul>
-<li>${provider ? `<strong>${esc(provider)}</strong>, the company whose AI model writes the lessons, receives your question and any document text in order to write the lesson.` : 'The AI model that writes the lessons runs on our own server, so your questions and documents are not sent to an outside AI company.'}</li>
+<li>${provider ? `<strong>${esc(provider)}</strong>, the company whose AI model writes the lessons, receives your question, any document text and the lesson you're asking about, in order to write the answer.` : 'The AI model that writes the lessons runs on our own server, so your questions and documents are not sent to an outside AI company.'}</li>
 <li><strong>Razorpay</strong> processes payments.</li>
 <li><strong>Google</strong>, if you choose to sign in with Google.</li>
 <li><strong>Our email provider</strong> receives your email address if you ask for a password reset link.</li>
@@ -280,8 +282,8 @@ ${updated()}
 <p>If something goes wrong with a payment, a lesson or your account, email ${email} and we'll look into it. For a payment, include the email address on your account and the order ID from your <a href="/receipts">receipt</a>.</p>
 <h2>Mistakes in AI lessons</h2>
 <p>Lessons are written by AI and can contain mistakes, including wrong explanations, calculations or pictures. A mistake in a lesson doesn't qualify for a refund or credit. If you find one, please tell us so we can improve the tutor, and check anything important yourself.</p>
-<h2>Free lessons</h2>
-<p>Free tries and sign-up lessons have no cash value and can't be exchanged for money.</p>
+<h2>Free chats</h2>
+<p>Free chats have no cash value and can't be exchanged for money.</p>
 <h2>Cancellation</h2>
 <p>There's no subscription, so there's nothing to cancel and nothing will be charged again. To close your account, email us.</p>
 </div>`,

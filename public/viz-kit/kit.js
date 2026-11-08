@@ -16,9 +16,11 @@
   // LaTeX command names. Models sometimes write \\frac (a line break + "frac") when they mean \frac,
   // so a doubled backslash in front of one of these is turned back into a single one.
   const COMMANDS = new Set('alpha beta gamma delta epsilon varepsilon zeta eta theta vartheta iota kappa lambda mu nu xi pi varpi rho varrho sigma varsigma tau upsilon phi varphi chi psi omega Gamma Delta Theta Lambda Xi Pi Sigma Upsilon Phi Psi Omega frac dfrac tfrac sqrt sum prod int iint iiint oint lim limsup liminf sup inf max min arg argmax argmin det exp log ln sin cos tan sec csc cot arcsin arccos arctan sinh cosh tanh left right big Big bigg Bigg bigl bigr Bigl Bigr middle text textbf textit mathrm mathbf mathit mathcal mathbb mathsf boldsymbol operatorname cdot cdots ldots dots vdots ddots times div pm mp ast star circ bullet le leq ge geq neq ne approx sim simeq equiv cong propto ll gg in notin subset subseteq supset supseteq cup cap setminus emptyset varnothing forall exists nexists to rightarrow leftarrow Rightarrow Leftarrow leftrightarrow Leftrightarrow mapsto implies iff uparrow downarrow longrightarrow longleftarrow partial nabla infty hbar ell Re Im hat bar vec tilde dot ddot overline underline widehat widetilde overrightarrow quad qquad begin end matrix pmatrix bmatrix vmatrix cases aligned langle rangle lvert rvert lVert rVert lfloor rfloor lceil rceil top perp parallel angle triangle displaystyle textstyle color mid'.split(' '));
-  function normalizeTex(tex) {
+  function normalizeTex(rawTex) {
+    // A model's slip in its JSON can turn \frac into a form feed plus "rac": put the backslash back
+    const tex = String(rawTex).replace(/\f/g, '\\f').replace(/[\b]/g, '\\b').replace(/\t(?=(?:ext\{|extbf\{|imes\b|heta\b|au\b|o(?:[\d\s}]|$)|riangle\b|ilde\{|frac\{))/g, '\\t').replace(/\r(?=(?:ho\b|ight(?:arrow)?\b))/g, '\\r').replace(/\n(?=abla\b)/g, '\\n');
     // Plain words in a formula box would lose their spaces in math mode
-    const plain = String(tex).trim();
+    const plain = tex.trim();
     if (/[A-Za-z]{2,}[ ,]+[A-Za-z0-9]{2,}/.test(plain) && !/[\\^_{}=+*/]/.test(plain)) return `\\text{${plain}}`;
     return String(tex).replace(/\\\\([A-Za-z]+)/g, (match, word, offset, text) =>
       text[offset - 1] === '\\' || !COMMANDS.has(word) ? match : '\\' + word,
@@ -187,13 +189,20 @@
    * How tall the content really is. scrollHeight is useless when a layout stretches to the frame
    * (100vh / height: 100%), so measure where visible elements end, ignoring full-height wrappers.
    */
+  const MIN_MAIN_HEIGHT = 140; // smaller than this, a graph is too squeezed to read
+  let grownFrom = null;
   function contentHeight() {
     const viewport = window.innerHeight;
     // A page built on .ml-page fits the frame by design. Only ask for more room if the main
     // picture would be squeezed too small to read.
     const main = document.querySelector('.ml-page > .ml-main');
     if (main && window.innerWidth > 700) {
-      return viewport + Math.max(0, 200 - main.getBoundingClientRect().height);
+      const mainHeight = main.getBoundingClientRect().height;
+      // Already asked for more room and the picture got no bigger? More room won't fix it.
+      if (grownFrom && viewport > grownFrom.viewport && mainHeight <= grownFrom.mainHeight + 1) return viewport;
+      if (mainHeight >= MIN_MAIN_HEIGHT) return viewport;
+      if (!grownFrom || viewport > grownFrom.viewport) grownFrom = { viewport, mainHeight };
+      return viewport + (MIN_MAIN_HEIGHT - mainHeight);
     }
     let bottom = 0;
     for (const node of document.body.querySelectorAll('*')) {
