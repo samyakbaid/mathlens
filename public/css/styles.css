@@ -1411,7 +1411,7 @@ mark.missing { padding: 1px 6px; border-radius: 5px; background: var(--danger-so
   .topnav { margin-left: 4px; }
   .topnav a { padding: 8px 8px; font-size: 14px; }
   .topnav a.active::after { left: 8px; right: 8px; }
-  .account-bar .btn.ghost { display: none; }
+  .account-bar > .btn.ghost { display: none; }
   .account-credit { display: none; }
   .account-chip { padding: 3px; }
   .page { padding: 22px 16px 80px; }
@@ -1432,3 +1432,7 @@ mark.missing { padding: 1px 6px; border-radius: 5px; background: var(--danger-so
   .receipt-parties { grid-template-columns: 1fr; }
   .site-footer { padding: 22px 16px 32px; }
 }
+
+/* The account chip opens a menu, so show that, and keep Log out looking like a button */
+.account-chip::after { content: ""; width: 6px; height: 6px; margin: -3px 4px 0 2px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); }
+.account-menu .btn.ghost { border-color: var(--border-strong); }
