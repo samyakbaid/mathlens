@@ -1,0 +1,62 @@
+# Render Blueprint: in Render choose New > Blueprint and pick this repo.
+# Values marked "sync: false" are asked for once, when the Blueprint is created, and stay in Render.
+services:
+  - type: web
+    name: mathlens
+    runtime: node
+    plan: 0.5c-512mb        # free web services can't have a disk or send email
+    region: singapore       # closest Render region to India; it can't be changed later
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /healthz
+    disk:
+      name: mathlens-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: 25.9.0
+      - key: DATA_DIR
+        value: /var/data
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: TRUST_PROXY
+        value: "1"
+      - key: SHOW_IP_CHECK    # delete after confirming TRUST_PROXY (see README)
+        value: "true"
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "465"
+      - key: AI_PROVIDER
+        value: openai-compatible
+      - key: AI_BASE_URL
+        value: https://api.openai.com/v1
+      - key: AI_MODEL
+        value: gpt-6-luna
+      - key: AI_REASONING_EFFORT
+        value: low
+      - key: AI_API_KEY
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: PUBLIC_URL
+        sync: false
+      - key: BUSINESS_NAME
+        sync: false
+      - key: SUPPORT_EMAIL
+        sync: false
+      - key: BUSINESS_ADDRESS
+        sync: false
+      - key: BUSINESS_CITY
+        sync: false

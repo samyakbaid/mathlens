@@ -251,8 +251,16 @@ authRouter.post('/google', limitAuth, async (req, res) => {
   if (!user) {
     user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
     if (user) {
-      // Same verified email as an existing password account: link them
-      db.prepare('UPDATE users SET google_sub = ?, name = COALESCE(name, ?) WHERE id = ?').run(claims.sub, claims.name ?? null, user.id);
+      // Same email as an existing account, now proven by Google. Sign-up never proved who set that
+      // password, so someone could have registered this address before its owner arrived. Cancel
+      // the old password, logins and reset links so nobody else stays in the account. The credit
+      // stays, and a real owner who wants a password back can use "Forgot your password?".
+      const accountId = user.id;
+      transaction(() => {
+        db.prepare('UPDATE users SET google_sub = ?, name = COALESCE(name, ?), password_hash = NULL WHERE id = ?').run(claims.sub, claims.name ?? null, accountId);
+        db.prepare('DELETE FROM sessions WHERE user_id = ?').run(accountId);
+        db.prepare('DELETE FROM password_resets WHERE user_id = ?').run(accountId);
+      });
       user = db.prepare('SELECT * FROM users WHERE id = ?').get(user.id);
     } else {
       user = createUser({ email, name: claims.name ?? null, googleSub: claims.sub, ip: req.ip });

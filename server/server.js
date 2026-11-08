@@ -45,6 +45,12 @@ app.use((req, res, next) => {
 // For the hosting provider's uptime check
 app.get('/healthz', (req, res) => res.json({ ok: true }));
 
+// Shows the caller their own IP as the server sees it, to confirm TRUST_PROXY after deploying.
+// The free limits count by IP, so a wrong value would make every visitor look like one person.
+if (process.env.SHOW_IP_CHECK === 'true') {
+  app.get('/ipcheck', (req, res) => res.json({ seenAs: req.ip, forwardedFor: req.headers['x-forwarded-for'] ?? null }));
+}
+
 // The webhook needs the raw body to check Razorpay's signature, so it comes before express.json()
 app.post('/api/payments/webhook', express.raw({ type: 'application/json', limit: '100kb' }), handleWebhook);
 

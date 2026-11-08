@@ -223,3 +223,13 @@ Answers usually take 20–60 seconds because the model writes a full interactive
 - Save AI lessons in the database so popular questions load instantly for everyone and never cost API usage twice.
 - Follow-up questions on an AI answer ("now show it in 3D").
 - A "Graduate" track: measure theory, functional analysis, differential geometry.
+
+## Deploying on Render
+
+`render.yaml` describes the whole service: a paid web service in Singapore with a 1 GB persistent disk at `/var/data`, where the database lives. In Render choose **New → Blueprint**, pick this repo, and fill in the values it asks for. Secrets and personal details stay in Render, never in the repo.
+
+- Keep the disk. Everything outside `/var/data` is wiped on each deploy, including any database stored there.
+- Render snapshots the disk every 24 hours and keeps snapshots for 7 days. Restoring one discards everything after it.
+- With a disk there's only one instance, so each deploy takes the site down for a few seconds.
+- After the first deploy, open `/ipcheck` from two different networks. `seenAs` should show your real IP each time. If it doesn't, change `TRUST_PROXY`. Then delete `SHOW_IP_CHECK`.
+- Set `PUBLIC_URL` to the real address, add it to Google's Authorized JavaScript origins, and use the Razorpay webhook `https://<your-site>/api/payments/webhook`.
