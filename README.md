@@ -233,5 +233,4 @@ The site runs on one Ubuntu server, with Cloudflare Tunnel in front. Visitors re
 - `deploy/deploy.sh ubuntu@SERVER_IP https://your.site` sets up the server, uploads `.env` with the live settings, and starts the site. Use it again whenever `.env` changes.
 - `deploy/deploy.sh ubuntu@SERVER_IP` sends the latest commit and restarts.
 - The database is at `/var/lib/mathlens` and is backed up daily to `/var/backups/mathlens` (last 14). Those copies are on the same server, so download one regularly: if the server or account is lost, they go too.
-- After the first deploy, open `/ipcheck` from two networks. `seenAs` should be your real IP each time, because the free limits count by IP. Then remove `SHOW_IP_CHECK` from the live settings.
 - The tunnel gives up on a request after about 125 seconds. If a very long lesson hits that, asking again joins the same answer or opens the saved lesson without another charge.

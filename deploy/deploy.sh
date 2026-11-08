@@ -17,7 +17,7 @@ if [ -n "$PUBLIC_URL" ]; then
   # Your .env, minus what the server must not have, plus the live settings
   { grep -vE '^(GOOGLE_CLIENT_SECRET|PORT|HOST|NODE_ENV|COOKIE_SECURE|TRUST_PROXY|DATA_DIR|PUBLIC_URL|SHOW_IP_CHECK)=' .env
     printf '%s\n' 'PORT=3000' 'HOST=127.0.0.1' 'NODE_ENV=production' 'COOKIE_SECURE=true' 'TRUST_PROXY=1' \
-      'DATA_DIR=/var/lib/mathlens' 'SHOW_IP_CHECK=true' "PUBLIC_URL=${PUBLIC_URL}"
+      'DATA_DIR=/var/lib/mathlens' "PUBLIC_URL=${PUBLIC_URL}"
   } | ssh "$HOST" 'sudo install -o root -g mathlens -m 640 /dev/stdin /etc/mathlens.env'
 fi
 
