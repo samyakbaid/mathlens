@@ -20,7 +20,7 @@ if [ ! -f /swapfile ]; then
 fi
 
 apt-get update -y
-apt-get install -y curl xz-utils unattended-upgrades
+apt-get install -y curl xz-utils unattended-upgrades libatomic1
 systemctl enable --now unattended-upgrades
 
 # Node, checked against the official checksums
