@@ -68,7 +68,7 @@ export function addLessonChat({ rail, card, target, picture }) {
   const input = el('textarea', 'chat-input');
   input.rows = 1;
   input.maxLength = 1000;
-  input.placeholder = 'Ask about this step, or ask to change the picture';
+  input.placeholder = window.matchMedia('(max-width: 720px)').matches ? 'Ask about this step' : 'Ask about this step, or ask to change the picture';
   input.setAttribute('aria-label', 'Your question about this lesson');
   const send = el('button', 'btn primary small', 'Send');
   send.type = 'submit';

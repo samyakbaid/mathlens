@@ -455,7 +455,7 @@ kbd {
 .station a:hover .station-title { text-decoration: underline wavy var(--accent) 1.5px; text-underline-offset: 5px; }
 .station-summary { font-size: 14.5px; line-height: 1.5; color: var(--muted); }
 
-.tools { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; margin-top: 64px; }
+.tools { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 18px; margin-top: 64px; }
 .tool-card {
   display: grid;
   grid-template-columns: 120px 1fr;
@@ -1524,15 +1524,23 @@ mark.missing { padding: 1px 6px; border-radius: 5px; background: var(--danger-so
 }
 
 @media (max-width: 720px) {
-  .topbar { gap: 8px; padding: 0 12px; }
-  .logo-text { display: none; }
-  .topnav { margin-left: 4px; }
-  .topnav a { padding: 8px 8px; font-size: 14px; }
+  /* Two rows on a phone: logo and account on top, the main links under them. The bar scrolls away
+     with the page, so it takes no room from the lesson. */
+  :root { --topbar-height: 0px; }
+  .topbar { position: relative; height: auto; flex-wrap: wrap; gap: 0 6px; padding: 8px 12px 2px; }
+  .topbar .icon-button { width: 34px; height: 34px; }
+  .logo { gap: 6px; }
+  .logo-text { font-size: 18px; }
+  .search-trigger { gap: 0; padding: 7px 9px; }
+  .account-bar { gap: 2px; }
+  .account-bar .btn.small { padding: 6px 9px; }
+  .plot-hint { width: max-content; max-width: calc(100% - 24px); border-radius: 12px; white-space: normal; text-align: center; }
+  .topnav { order: 1; flex: 0 0 100%; justify-content: space-between; margin: 4px 0 0; }
+  .topnav a { padding: 8px 8px; font-size: 14px; white-space: nowrap; }
   .topnav a.active::after { left: 8px; right: 8px; }
-  .account-bar > .btn.ghost { display: none; }
   .account-credit { display: none; }
   .account-chip { padding: 3px; }
-  .account-menu { position: fixed; top: 60px; left: 12px; right: 12px; width: auto; }
+  .account-menu { position: fixed; top: 50px; left: 12px; right: 12px; width: auto; }
   .page { padding: 22px 16px 80px; }
   .lesson-stage { padding: 8px; }
   .rail-card { padding: 8px 16px 18px; }
@@ -1550,6 +1558,15 @@ mark.missing { padding: 1px 6px; border-radius: 5px; background: var(--danger-so
   .static-cta { display: none; }
   .receipt-parties { grid-template-columns: 1fr; }
   .site-footer { padding: 22px 16px 32px; }
+}
+
+/* Narrow phones: the top row keeps the name, Log in and Sign up, and gives up search first */
+@media (max-width: 379px) {
+  .search-trigger { display: none; }
+  .account-bar { margin-left: auto; }
+}
+@media (max-width: 339px) {
+  .logo-text { display: none; }
 }
 
 /* The account chip opens a menu, so show that, and keep Log out looking like a button */

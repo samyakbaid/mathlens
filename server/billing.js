@@ -77,7 +77,7 @@ const inFlight = new Set(); // one AI request at a time per account / visitor
 const underway = new Map();
 const countUnderway = (key) => underway.get(key) ?? 0;
 function markUnderway(payWith, ip, change) {
-  const keys = payWith === 'question' ? ['question', `question:${ip}`] : payWith === 'trial' ? [`trial:${ip}`] : [];
+  const keys = { question: ['question', `question:${ip}`], trial: ['free-chat', `trial:${ip}`], free: ['free-chat'] }[payWith] ?? [];
   for (const key of keys) {
     const next = countUnderway(key) + change;
     if (next > 0) underway.set(key, next);
@@ -97,6 +97,11 @@ export function trialStatus(req) {
 
 function ipTrialsToday(ip) {
   return db.prepare("SELECT COUNT(*) AS n FROM usage WHERE ip = ? AND paid_with = 'trial' AND created_at > datetime('now', '-1 day')").get(ip).n + countUnderway(`trial:${ip}`);
+}
+
+/** Free chats used across the whole site in the last day, including any being written now. */
+function freeChatsUsedToday() {
+  return db.prepare("SELECT COUNT(*) AS n FROM usage WHERE paid_with IN ('trial', 'free') AND created_at > datetime('now', '-1 day')").get().n + countUnderway('free-chat');
 }
 
 function questionsCovered(req) {
@@ -145,16 +150,31 @@ export function freeQuestionsStatus(req) {
  * @returns {{ ok: true, payWith: string } | { ok: false, status: number, code: string, message: string }}
  */
 function takeChat(req, model, minimumPaise) {
+  const freeChatsGone = freeChatsUsedToday() >= config.freeChatsSitePerDay;
   if (req.user) {
-    const taken = db.prepare('UPDATE users SET free_answers_left = free_answers_left - 1 WHERE id = ? AND free_answers_left > 0').run(req.user.id);
-    if (taken.changes) return { ok: true, payWith: 'free' };
+    // Someone who has bought credit is never held back by the site-wide limit on free chats
+    if (!freeChatsGone || req.user.balance_paise > 0) {
+      const taken = db.prepare('UPDATE users SET free_answers_left = free_answers_left - 1 WHERE id = ? AND free_answers_left > 0').run(req.user.id);
+      if (taken.changes) return { ok: true, payWith: 'free' };
+    }
     if (req.user.balance_paise >= (minimumPaise ?? averageChargePaise(model))) return { ok: true, payWith: 'credits' };
+    if (freeChatsGone && req.user.free_answers_left > 0) {
+      return {
+        ok: false,
+        status: 402,
+        code: 'payment_required',
+        message: `MathLens is very busy today and the free chats have run out for now. Yours are safe and will work again tomorrow. To keep going now, you can top up from ₹${config.minTopupRupees}.`,
+      };
+    }
     return {
       ok: false,
       status: 402,
       code: 'payment_required',
       message: `You've used your free chats. ₹20 covers about ${Math.max(1, Math.floor(2000 / averageChargePaise(model)))} more, and every lesson you've asked for stays free to reopen.`,
     };
+  }
+  if (freeChatsGone) {
+    return { ok: false, status: 401, code: 'login_required', message: `MathLens is very busy today and the free chats have run out for now. Sign up (free) and your ${config.freeAnswersAfterSignup} free chats will be ready tomorrow.` };
   }
   if (ipTrialsToday(req.ip) >= config.trialPerIpPerDay) {
     return { ok: false, status: 401, code: 'login_required', message: 'Free chats from this network are used up for today. Sign up (free) to keep going.' };

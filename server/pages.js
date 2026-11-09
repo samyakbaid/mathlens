@@ -147,6 +147,7 @@ pagesRouter.get('/pricing', (req, res) => {
 <p>₹20 is about the price of a cup of chai, and it covers about ${lessonsFor(2000)} chats.</p>
 <h2>What's a chat?</h2>
 <p>A chat is a question that gets you a new lesson, a request to change how a lesson's picture works, or a set of ${config.questionsPerChat} follow-up questions. Asking something you've already asked, or reopening a saved lesson, doesn't use a chat.</p>
+<p>If MathLens gets very busy, the day's free chats can run out. Any you still have will work the next day.</p>
 <h2>Follow-up questions</h2>
 <p>Inside any lesson, your first ${config.freeQuestionsPerDay} follow-up questions each day are free. After that, every ${config.questionsPerChat} questions count as one chat. The chat is used when you ask the first of them, and the rest stay ready for whenever you want them. On a shared network or a very busy day, the free ones can run out sooner.</p>
 <h2>How the price is worked out</h2>

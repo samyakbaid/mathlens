@@ -127,7 +127,8 @@ function shareStageHeight(stage) {
 /** Scroll so the whole lesson card is on screen (when the reader moves to another step). */
 export function bringIntoView(card) {
   const rect = card.getBoundingClientRect();
-  const top = (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--topbar-height')) || 64) + 12;
+  const bar = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--topbar-height')); // 0 on a phone
+  const top = (Number.isNaN(bar) ? 64 : bar) + 12;
   if (rect.top >= top - 4 && rect.bottom <= window.innerHeight + 4) return;
   window.scrollTo({ top: window.scrollY + rect.top - top, behavior: 'smooth' });
 }

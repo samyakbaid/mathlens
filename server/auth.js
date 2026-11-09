@@ -112,12 +112,13 @@ export function sameOriginOnly(req, res, next) {
 
 // ---- Simple rate limiting (per IP, in memory) -------------------------------------------
 
-function rateLimiter({ max, windowMs }) {
+function rateLimiter({ max, windowMs, by = (req) => req.ip }) {
   const hits = new Map();
   setInterval(() => hits.clear(), windowMs).unref();
   return (req, res, next) => {
-    const count = (hits.get(req.ip) ?? 0) + 1;
-    hits.set(req.ip, count);
+    const id = by(req);
+    const count = (hits.get(id) ?? 0) + 1;
+    hits.set(id, count);
     if (count > max) return res.status(429).json({ error: 'Too many attempts. Wait a minute and try again.' });
     next();
   };
@@ -197,7 +198,10 @@ async function verifyGoogleToken(idToken) {
 // ---- Routes -----------------------------------------------------------------------------------
 
 export const authRouter = express.Router();
-const limitAuth = rateLimiter({ max: 10, windowMs: 60 * 1000 });
+// Per address, and high, because everyone on a campus can share one. Guessing one account's password
+// is limited separately, however many addresses it comes from.
+const limitAuth = rateLimiter({ max: 120, windowMs: 60 * 1000 });
+const limitLoginPerAccount = rateLimiter({ max: 10, windowMs: 60 * 1000, by: (req) => normalizeEmail(req.body?.email) });
 
 authRouter.post('/signup', limitAuth, (req, res) => {
   const email = normalizeEmail(req.body?.email);
@@ -222,7 +226,7 @@ authRouter.post('/signup', limitAuth, (req, res) => {
   res.json({ user: publicUser(user) });
 });
 
-authRouter.post('/login', limitAuth, (req, res) => {
+authRouter.post('/login', limitAuth, limitLoginPerAccount, (req, res) => {
   const email = normalizeEmail(req.body?.email);
   const password = String(req.body?.password ?? '');
   const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
@@ -273,7 +277,7 @@ authRouter.post('/google', limitAuth, async (req, res) => {
 // ---- Forgotten passwords ---------------------------------------------------------------------
 
 const RESET_LINKS_PER_HOUR = 3; // per account, so nobody can flood someone's inbox
-const limitForgot = rateLimiter({ max: 5, windowMs: 60 * 1000 });
+const limitForgot = rateLimiter({ max: 30, windowMs: 60 * 1000 });
 
 // The answer is the same whether or not the account exists, and the email is sent after replying,
 // so this can't be used to find out who has an account. A Google-only account can use this too:
