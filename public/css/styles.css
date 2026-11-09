@@ -1560,10 +1560,16 @@ mark.missing { padding: 1px 6px; border-radius: 5px; background: var(--danger-so
   .site-footer { padding: 22px 16px 32px; }
 }
 
+/* iPhones zoom the whole page when you tap a box with text under 16px, so it then scrolls sideways */
+@media (max-width: 720px) {
+  input:not([type="range"], [type="checkbox"], [type="radio"], [type="color"]), textarea, select { font-size: 16px !important; }
+}
+
 /* Narrow phones: the top row keeps the name, Log in and Sign up, and gives up search first */
 @media (max-width: 379px) {
   .search-trigger { display: none; }
   .account-bar { margin-left: auto; }
+  .hero-ask input { padding-left: 8px; padding-right: 4px; }
 }
 @media (max-width: 339px) {
   .logo-text { display: none; }
