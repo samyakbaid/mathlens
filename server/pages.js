@@ -137,8 +137,9 @@ pagesRouter.get('/pricing', (req, res) => {
 <h1>Free to start. <em>About ${rupees(average)} a chat after that.</em></h1>
 <p class="lede">The built-in lessons and Graph Lab are free for everyone. You only pay for the tutor, and only for what you ask it.</p>
 <div class="price-cards">
-  <div class="price-card"><span class="price-label">Try it</span><strong>${config.trialAnswers} free</strong><p>chats with the tutor, without an account.</p></div>
-  <div class="price-card"><span class="price-label">Sign up</span><strong>${config.freeAnswersAfterSignup} more free</strong><p>when you make a free account with Google or email.</p></div>
+  ${config.trialAnswers > 0 ? `<div class="price-card"><span class="price-label">Try it</span><strong>${config.trialAnswers} free</strong><p>chats with the tutor, without an account.</p></div>` : ''}
+  <div class="price-card"><span class="price-label">Sign up</span><strong>${config.freeAnswersAfterSignup} free</strong><p>chats with the tutor, when you make a free account with Google or email.</p></div>
+  <div class="price-card"><span class="price-label">In any lesson</span><strong>${config.freeQuestionsPerDay} free</strong><p>follow-up questions a day.</p></div>
   <div class="price-card highlight"><span class="price-label">After that</span><strong>${rupees(average)} a chat</strong><p>or less. Top up any amount from ₹${config.minTopupRupees}.</p></div>
 </div>
 <div class="legal">
@@ -202,7 +203,7 @@ ${updated()}
 <h2>1. Who we are</h2>
 <p>MathLens ("we", "us") is run by ${name}${config.businessAddress ? `, ${esc(config.businessAddress)}` : ''}. By using the website you agree to these terms. If you don't agree with them, please don't use MathLens.</p>
 <h2>2. Your account</h2>
-<p>You need a free account to keep using the tutor after the free chats. Keep your password to yourself, because you're responsible for what happens in your account. Each account is for one person. We may suspend accounts that are used to collect free credit unfairly or to misuse the service.</p>
+<p>You need a free account to get free chats with the tutor and to buy credit. Keep your password to yourself, because you're responsible for what happens in your account. Each account is for one person. We may suspend accounts that are used to collect free credit unfairly or to misuse the service.</p>
 <h2>3. Credit and payments</h2>
 <p>Chats with the tutor (a new lesson, a change to a picture, or a set of ${config.questionsPerChat} follow-up questions beyond the free daily limit) are paid for with prepaid credit, which you buy through our payment partner, Razorpay. A new lesson or a change to a picture is charged at its actual cost. A set of follow-up questions is charged at the average price of a chat when you ask the first question in the set. The <a href="/pricing">pricing page</a> explains both. Credit has no cash value outside MathLens, can't be transferred to another person and doesn't expire. Credit can't be refunded once bought. See the <a href="/refunds">refund policy</a>. Free chats, free questions and sign-up credit are a gift and may change over time.</p>
 <h2>4. Lessons are written by AI</h2>
@@ -243,7 +244,7 @@ ${updated()}
 <li><strong>Documents you upload.</strong> Your browser reads the text out of the file; the file itself never leaves your device. The text is sent along with your question to write the lesson. We keep the lesson and a short fingerprint of the text (so we can recognise the same document again), not the text itself.</li>
 <li><strong>Payments.</strong> The amount and Razorpay's order and payment IDs. Your card, UPI and bank details go straight to Razorpay; we never see them.</li>
 <li><strong>Usage.</strong> For each chat, how much it cost to answer, and the IP address it came from. We use the IP address to stop people collecting free chats unfairly.</li>
-<li><strong>Cookies and browser storage.</strong> A cookie that keeps you logged in, and a cookie that counts free chats before you sign up. Your browser also remembers your light or dark theme and which lessons you've opened. We don't use advertising or tracking cookies.</li>
+<li><strong>Cookies and browser storage.</strong> A cookie that keeps you logged in, and a cookie that counts free questions if you haven't signed up. Your browser also remembers your light or dark theme and which lessons you've opened. We don't use advertising or tracking cookies.</li>
 </ul>
 <h2>Who else sees it</h2>
 <ul>

@@ -109,12 +109,11 @@ export function answersFor(paise) {
 
 /** One short line describing what the person can still do, e.g. "2 free chats left". */
 export function allowanceText() {
-  const { user, trial } = account;
+  const { user, trial, pricing } = account;
   if (!account.loaded) return '';
   if (!user) {
-    return trial?.left > 0
-      ? `${trial.left} free ${trial.left === 1 ? 'chat' : 'chats'} left, no account needed`
-      : 'Free chats used. Sign up (free) to keep going.';
+    if (trial?.left > 0) return `${trial.left} free ${trial.left === 1 ? 'chat' : 'chats'} left, no account needed`;
+    return trial?.limit > 0 ? 'Free chats used. Sign up (free) to keep going.' : `Sign up (free) to get ${pricing?.freeAnswersAfterSignup ?? 5} free chats.`;
   }
   if (user.freeAnswersLeft > 3) return `${user.freeAnswersLeft} free chats left`;
   if (user.freeAnswersLeft > 0) return `${user.freeAnswersLeft} free ${user.freeAnswersLeft === 1 ? 'chat' : 'chats'} left. After that, ₹20 covers about ${answersFor(2000)} more.`;

@@ -9,9 +9,9 @@ const number = (name, fallback) => {
 export const config = {
   // Free use
   /** AI answers someone can get without an account */
-  get trialAnswers() { return number('TRIAL_ANSWERS', 2); },
+  get trialAnswers() { return number('TRIAL_ANSWERS', 0); },
   /** Extra free AI answers when someone signs up */
-  get freeAnswersAfterSignup() { return number('FREE_ANSWERS_AFTER_SIGNUP', 3); },
+  get freeAnswersAfterSignup() { return number('FREE_ANSWERS_AFTER_SIGNUP', 5); },
   /** Anti-abuse: trial answers per IP address per day. High, because a whole campus can share one address */
   /** Follow-up questions inside a lesson that don't use a chat, per person per day */
   get freeQuestionsPerDay() { return number('FREE_QUESTIONS_PER_DAY', 4); },
@@ -27,7 +27,7 @@ export const config = {
   get freeChatsSitePerDay() { return number('FREE_CHATS_SITE_PER_DAY', 200); },
   get trialPerIpPerDay() { return number('TRIAL_PER_IP_PER_DAY', 150); },
   /** Anti-abuse: new accounts per IP per day that get the free sign-up answers */
-  get freeSignupsPerIpPerDay() { return number('FREE_SIGNUPS_PER_IP_PER_DAY', 150); },
+  get freeSignupsPerIpPerDay() { return number('FREE_SIGNUPS_PER_IP_PER_DAY', 1000); },
 
   // Pricing (answers are billed at their real AI cost)
   /** Rupees per US dollar, used to convert the AI provider's price */
@@ -59,7 +59,7 @@ export const config = {
   get businessPhone() { return process.env.BUSINESS_PHONE || ''; },
   get businessCity() { return process.env.BUSINESS_CITY || ''; },
   get businessGstin() { return process.env.BUSINESS_GSTIN || ''; },
-  get policyUpdated() { return process.env.POLICY_UPDATED || '8 November 2026'; },
+  get policyUpdated() { return process.env.POLICY_UPDATED || '9 November 2026'; },
 
   /** Set COOKIE_SECURE=true when the site is served over HTTPS */
   get cookieSecure() { return process.env.COOKIE_SECURE === 'true'; },

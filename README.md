@@ -40,7 +40,7 @@ mathlens/
 │   ├── config.js                 free limits, pricing, keys (all overridable in .env)
 │   ├── db.js                     SQLite database in data/mathlens.db (built into Node)
 │   ├── auth.js                   email + password and Google sign-in, sessions
-│   ├── billing.js                free trial → free sign-up answers → paid credits; per-answer cost
+│   ├── billing.js                free sign-up answers → paid credits; per-answer cost
 │   ├── payments.js               Razorpay top-ups (order, signature check, webhook)
 │   ├── lessons.js                the notebook: saved lessons, matching repeat and similar questions
 │   ├── email.js                  sends password reset links over SMTP
@@ -164,9 +164,8 @@ Tips:
 
 Only **Ask AI** costs money to run, so only it is limited. Built-in topics and Graph Lab stay free and need no account.
 
-1. **Trial:** 2 chats without an account (counted per browser, with a per-network daily cap).
-2. **Sign up** (email + password, or Google): 3 more free chats. Up to 150 new accounts per network per day get them, high enough for a whole campus on one shared address. All free chats together are limited to 200 a day across the site (`FREE_CHATS_SITE_PER_DAY`), about ₹100 a day at normal lesson sizes. When they run out, people who have bought credit carry on, and everyone else's free chats wait until the next day.
-3. **Credits:** after that, people top up any amount from ₹10 with Razorpay (UPI, cards, netbanking). Each answer is charged at **its real AI cost** (tokens × the model's price, converted to ₹) plus 3% to cover Razorpay's fee. A chat is a new lesson, a change to a picture, or a set of `QUESTIONS_PER_CHAT` (4) follow-up questions. The first `FREE_QUESTIONS_PER_DAY` (4) questions a day are free. A set of questions is charged the average chat price, not its real cost. With gpt-6-luna on medium reasoning effort a new lesson costs about ₹0.50, so ₹10 ≈ 20 chats. Prices are quoted at the lesson price. The top-up dialog shows the live average.
+1. **Sign up** (email + password, or Google): 5 free chats. Nobody gets a free chat without an account (`TRIAL_ANSWERS` is 0). Sign-up doesn't check that an email address is real, so the site-wide limit below is what stops fake accounts from running up the bill. Up to 1,000 new accounts per network per day get them, high enough for a whole campus on one shared address. All free chats together are limited to 200 a day across the site (`FREE_CHATS_SITE_PER_DAY`), about ₹100 a day at normal lesson sizes. When they run out, people who have bought credit carry on, and everyone else's free chats wait until the next day.
+2. **Credits:** after that, people top up any amount from ₹10 with Razorpay (UPI, cards, netbanking). Each answer is charged at **its real AI cost** (tokens × the model's price, converted to ₹) plus 3% to cover Razorpay's fee. A chat is a new lesson, a change to a picture, or a set of `QUESTIONS_PER_CHAT` (4) follow-up questions. The first `FREE_QUESTIONS_PER_DAY` (4) questions a day are free. A set of questions is charged the average chat price, not its real cost. With gpt-6-luna on medium reasoning effort a new lesson costs about ₹0.50, so ₹10 ≈ 20 chats. Prices are quoted at the lesson price. The top-up dialog shows the live average.
 
 Failed answers are never charged, and only one question per account runs at a time. All limits and prices are in `.env.example`.
 

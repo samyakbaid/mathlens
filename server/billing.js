@@ -6,7 +6,7 @@
 // question of a set takes a chat and the rest of the set is kept in questions_covered until it's used.
 //
 // Order of payment for a chat:
-//   anonymous visitor → free trial answers (TRIAL_ANSWERS), then "please log in"
+//   anonymous visitor → "please sign up" (or free trial answers first, if TRIAL_ANSWERS is set)
 //   logged-in user    → free sign-up answers, then their prepaid ₹ balance, then "please top up"
 //
 // A new lesson or picture change is charged to credit at its real AI cost (tokens × the model's
@@ -172,6 +172,9 @@ function takeChat(req, model, minimumPaise) {
       code: 'payment_required',
       message: `You've used your free chats. ₹20 covers about ${Math.max(1, Math.floor(2000 / averageChargePaise(model)))} more, and every lesson you've asked for stays free to reopen.`,
     };
+  }
+  if (config.trialAnswers <= 0) {
+    return { ok: false, status: 401, code: 'login_required', message: `Sign up (free) to get ${config.freeAnswersAfterSignup} free chats with the tutor.` };
   }
   if (freeChatsGone) {
     return { ok: false, status: 401, code: 'login_required', message: `MathLens is very busy today and the free chats have run out for now. Sign up (free) and your ${config.freeAnswersAfterSignup} free chats will be ready tomorrow.` };
