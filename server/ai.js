@@ -3,6 +3,7 @@
 //   anthropic          → Claude (default)
 //   openai-compatible  → any OpenAI-compatible server: Ollama, LM Studio, vLLM, OpenRouter, ...
 
+import { alertOwner } from './alerts.js';
 import { SYSTEM_PROMPT, FOLLOW_UP_PROMPT, PICTURE_CHANGE_PROMPT } from './prompt.js';
 import { UserFacingError } from './errors.js';
 import { repairLatexInScripts, restoreLostBackslashes } from './latex-repair.js';
@@ -297,6 +298,9 @@ export function describeError(err) {
   }
   for (const provider of [anthropic, openaiCompatible]) {
     const described = provider.describeError(err);
+    if (described?.outOfCredit) {
+      alertOwner('out-of-credit', 'the AI account is out of credit', 'The AI provider just refused a request because the account has no credit left, so nobody can get lessons or answers until you top it up.\n\nFor OpenAI: platform.openai.com, Settings, Billing.\n\nYou will get this email at most once every 6 hours while it lasts.');
+    }
     if (described) return described;
   }
   if (err instanceof SyntaxError) {

@@ -174,11 +174,12 @@ async function readStream(body) {
 /** Map errors from this provider to a status + message, or return null if this isn't one. */
 export function describeError(err) {
   if (err instanceof ProviderHttpError) {
+    // Out of credit: OpenAI says 429 "insufficient_quota", other servers often say 402
+    if (err.status === 402 || /insufficient_quota|exceeded your current quota|insufficient (credits|balance)/i.test(err.body)) {
+      return { status: 503, outOfCredit: true, message: 'The tutor is taking a short break. Please try again in a little while. Nothing was charged.' };
+    }
     if (err.status === 401 || err.status === 403) {
       return { status: 500, message: 'The model server rejected the API key. Check AI_API_KEY in .env.' };
-    }
-    if (err.status === 402) {
-      return { status: 502, message: `The model server needs credits or a paid plan for "${modelName()}". Add credits, or switch AI_MODEL to a free or local model.` };
     }
     if (err.status === 404) {
       return { status: 500, message: `Model "${modelName()}" was not found at ${baseUrl()}. Check AI_MODEL (with Ollama, run "ollama pull ${modelName()}" first).` };

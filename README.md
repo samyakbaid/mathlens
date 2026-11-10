@@ -284,3 +284,9 @@ Every lesson, AI or built-in, has an **Ask a question** button that opens a chat
 - What free questions can cost is capped four ways: 150 a day per network for people without an account, 250 a day per network for everyone, 300 a day on the whole site, and a limit of 2,000 tokens on each reply. A reply that hits that limit is cut at its last whole sentence and still counts as a question, so asking for something huge over and over can't run up the bill. Answers still being written count toward the limits, so a burst of requests can't get past them.
 - Asking the same thing about the same step again is free, and a failed answer is never charged.
 - Chats are saved in the `followups` table with the lesson or topic, and a reopened lesson shows its latest changed picture.
+
+## Checking how it is used
+
+`deploy/stats.sh ubuntu@130.210.7.218` prints new accounts, lessons, questions, free chats, top-ups, credit spent and AI cost for today (India time), the last 7 days and all time, plus the latest payments. It only reads the database.
+
+If the AI account runs out of credit, students see "The tutor is taking a short break" and the server emails `SUPPORT_EMAIL` (at most once every 6 hours).

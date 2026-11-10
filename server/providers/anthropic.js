@@ -70,6 +70,9 @@ export function describeError(err) {
   if (err instanceof Anthropic.AuthenticationError) {
     return { status: 500, message: 'The server\'s Anthropic API key is invalid. Check ANTHROPIC_API_KEY in .env.' };
   }
+  if (err instanceof Anthropic.APIError && /credit balance is too low/i.test(err.message)) {
+    return { status: 503, outOfCredit: true, message: 'The tutor is taking a short break. Please try again in a little while. Nothing was charged.' };
+  }
   if (err instanceof Anthropic.RateLimitError) {
     return { status: 429, message: 'Too many requests right now. Wait a minute and try again.' };
   }
