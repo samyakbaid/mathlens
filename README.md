@@ -1,292 +1,79 @@
 # MathLens
 
-Learn math by seeing it. Every lesson in MathLens is taught **step by step, and the visual changes with each step**: hand-built lessons for core topics, a Desmos-style **Graph Lab**, and an **Ask** page where an AI tutor (Claude, OpenAI or an open-weight model) turns any question into a step-by-step lesson with its own interactive visualization. Two themes: *paper* (light) and *chalkboard* (dark).
+**Learn math by seeing it move.** Ask any math question and an AI tutor writes you a step-by-step lesson with an interactive picture that changes at every step.
 
-## Run it
+**Live at [mathlens.in](https://mathlens.in)**
+
+![The MathLens home page](docs/screenshots/home.jpg)
+
+## What it does
+
+- **AI lessons with pictures.** Type a question, or attach a PDF of a paper you're stuck on. The tutor writes a lesson that starts from a worked example, one idea per step, and builds an interactive visualization (sliders, animations, zoomable graphs, 3D surfaces) that switches scene as you move through the steps.
+- **Follow-up chat in every lesson.** Ask about the step you're on, or ask for the picture to change ("use bigger numbers", "add a slider"). The picture stays in view while you talk.
+- **Hand-built lessons** on derivatives, Riemann sums, Taylor series, linear transformations, matrix composition, eigenvectors, Fourier series and the central limit theorem.
+- **Graph Lab**, a graphing calculator for 2D and 3D. Letters become sliders, points can be dragged, and every graph can be shared as a link.
+- **Notebook.** Every lesson you ask for is saved, and reopening one is free.
+- **Pay as you go.** No subscription: top up from ₹10 with UPI or card and pay about ₹0.50 a lesson, close to what the AI costs to run.
+
+| A built-in lesson | Dark "chalkboard" theme |
+| --- | --- |
+| ![The derivative lesson](docs/screenshots/lesson-derivative.jpg) | ![The eigenvectors lesson in dark mode](docs/screenshots/lesson-eigenvectors-dark.jpg) |
+
+![Graph Lab](docs/screenshots/graph-lab.jpg)
+
+## How it works
+
+```mermaid
+flowchart LR
+  B[Browser] -- question --> S[Node + Express server]
+  S -- prompt + JSON schema --> AI[AI model<br/>OpenAI, Claude or open-weight]
+  AI -- lesson + picture code --> S
+  S -- compile check, LaTeX repair --> S
+  S -- saved lesson --> DB[(SQLite)]
+  S -- lesson --> B
+  B -- picture code --> F[Sandboxed iframe<br/>+ viz kit]
+  B -- "step 3" --> F
+```
+
+1. The server asks the model for a lesson as structured JSON: an intro, the steps, and one HTML/JavaScript program that draws the picture.
+2. Before anything is saved, every script in the picture is compiled (never run) on the server. Common slips are fixed automatically, others go back to the model once, and a lesson that still doesn't work fails without charging anyone.
+3. The browser runs the picture in a sandboxed iframe, so AI-written code can't touch the page. A small kit loaded into the frame gives it zoomable graphs, theme colours, LaTeX equations and a step signal: pressing Next tells the picture which scene to show.
+4. Coloured phrases in the text ("the [[orange:tangent line]]") match colours in the picture, and hovering one highlights it.
+
+## Engineering highlights
+
+- **No framework, no build step.** The frontend is plain ES modules; the server is Node with Express and Node's built-in SQLite.
+- **Billing at real cost.** Each answer's token usage is priced per model and charged in paise, with a reserve, settle or release flow so failed answers are never charged and one account can't run two answers at once.
+- **Abuse limits that hold up.** Free use needs an account, and there are daily limits per person, per network and across the whole site. Answers still being written count toward the limits, so a burst of requests can't get past them.
+- **Long answers through a proxy.** Lessons can take two minutes; the server keeps the connection alive through Cloudflare's timeout and reports the real status at the end.
+- **Free hosting.** Runs on an Oracle Cloud Always Free server behind a Cloudflare Tunnel (no open ports), with encrypted daily database backups pushed to a private GitHub repo.
+- **Payments and accounts.** Razorpay checkout with signature checks and a webhook, email and Google sign-in, password reset by email, and printable receipts.
+
+## Tech stack
+
+Node.js 22+, Express 5, SQLite (`node:sqlite`), vanilla JavaScript, KaTeX, Plotly, pdf.js, the OpenAI and Anthropic APIs, Razorpay, Nodemailer, Oracle Cloud, Cloudflare Tunnel, systemd, age encryption.
+
+## Run it locally
 
 ```bash
 npm install
-cp .env.example .env      # then put your Anthropic API key in .env (or pick an open model, below)
+cp .env.example .env      # add an AI key (OpenAI, Anthropic, or a local Ollama model)
 npm start                 # http://localhost:3000
 ```
 
-Use `npm run dev` to restart the server automatically when you edit server files. Frontend files need no build step: edit and refresh the browser.
+The built-in lessons and Graph Lab work without any key; only the AI tutor needs one. `npm run dev` restarts the server when you edit server files, and frontend files need no build step. Every setting (limits, prices, payments, email) is listed in `.env.example`.
 
-The built-in topics work without an API key. Only the Ask AI page needs one.
+## Documentation
 
-### Using an open-weight model instead of Claude
+- [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md): how the code is organized, adding a lesson, how AI lessons and chats are built, using open-weight models.
+- [docs/OPERATIONS.md](docs/OPERATIONS.md): accounts and free limits, payments, policy pages, deploying, backups and the usage report.
 
-Set `AI_PROVIDER=openai-compatible` in `.env`. That works with any server that speaks the OpenAI Chat Completions API, so you can run models locally (Ollama, LM Studio, llama.cpp, vLLM) or use a hosted provider (OpenRouter, Together, Groq, DeepInfra, Fireworks).
+## What's next
 
-```bash
-# Local, with Ollama
-ollama pull qwen3-coder:30b
-# .env
-AI_PROVIDER=openai-compatible
-AI_BASE_URL=http://localhost:11434/v1
-AI_MODEL=qwen3-coder:30b
-```
+- More built-in lessons: gradients and level sets, SVD, complex functions, ODE phase portraits, Markov chains, Bayes' theorem.
+- Reading scanned PDFs, which have no text to pull out yet.
+- A graduate track: measure theory, functional analysis, differential geometry.
 
-For a hosted provider, set `AI_BASE_URL` to its `/v1` URL, `AI_API_KEY` to your key, and `AI_MODEL` to its model id. `.env.example` has ready-made blocks.
+## Author
 
-Each answer is a long, working HTML/JavaScript program, so model size matters. Large open models (Qwen3-Coder 480B, DeepSeek V3, Kimi K2, GLM 4.6, gpt-oss-120b) do well. Models around 30B are usable. Below that, visualizations often break. With Ollama, raise the context window (for example `OLLAMA_CONTEXT_LENGTH=32768 ollama serve`). Otherwise long answers get cut off.
-
-## How the code is organized
-
-```
-mathlens/
-├── server/                       Node + Express backend
-│   ├── server.js                 serves /public; routes /api/ask, /api/me, /api/auth, /api/payments
-│   ├── config.js                 free limits, pricing, keys (all overridable in .env)
-│   ├── db.js                     SQLite database in data/mathlens.db (built into Node)
-│   ├── auth.js                   email + password and Google sign-in, sessions
-│   ├── billing.js                free sign-up answers → paid credits; per-answer cost
-│   ├── payments.js               Razorpay top-ups (order, signature check, webhook)
-│   ├── lessons.js                the notebook: saved lessons, matching repeat and similar questions
-│   ├── email.js                  sends password reset links over SMTP
-│   ├── pages.js                  /about, /pricing, /contact, /terms, /privacy, /refunds, /delivery, receipts
-│   ├── ai.js                     picks the AI provider; parses and checks the lesson (intro + steps)
-│   ├── latex-repair.js           fixes LaTeX backslashes the AI gets wrong in its JavaScript
-│   ├── providers/
-│   │   ├── anthropic.js          Claude via the Anthropic API
-│   │   └── openai-compatible.js  open models via Ollama, LM Studio, vLLM, OpenRouter, ...
-│   └── prompt.js                 the instructions the AI follows (edit to change tone/style)
-│
-└── public/                       the website (plain HTML/CSS/JS modules, no framework)
-    ├── index.html
-    ├── css/styles.css
-    └── js/
-        ├── main.js               entry point + router (#/, #/topic/<id>, #/graph, #/ask), / opens search
-        ├── topics.js             built-in topics + learning paths ← register new topics here
-        ├── views/                one file per page
-        │   ├── home-view.js      Explore: hero, learning paths as lines of stations, tools
-        │   ├── topic-view.js     the lesson player: visual + step rail, instrument cards, notes
-        │   ├── palette.js        search palette (press /): find a lesson or ask the tutor
-        │   ├── lesson-player.js  shows an AI lesson (visual + step rail), used by Ask and Notebook
-        │   ├── notebook-view.js  Notebook: every saved lesson, searchable, free to reopen
-        │   ├── graph-view.js     Graph Lab: type equations, letters become sliders
-        │   ├── account-ui.js     top-bar account button, log in / sign up and add-credits dialogs
-        │   └── ask-view.js
-        ├── lib/                  shared helpers
-        │   ├── plot.js           2D coordinate plane on <canvas> (curves, arrows, dragging, zoom/pan)
-        │   ├── theme.js          light/dark theme; COLORS and alpha() for canvas drawing
-        │   ├── controls.js       sliders (typeable values), matrix input, addSteps (the step rail), readouts
-        │   ├── icons.js          small line icons (no emoji anywhere)
-        │   ├── hero-art.js       the home page's moving Fourier drawing
-        │   ├── expression.js     safe parser for formulas like "a sin(bx) + x^2" (+ LaTeX preview)
-        │   ├── linalg.js         2×2 matrix maths + drawing (transformed grid, basis vectors, det square)
-        │   ├── animate.js        animate(duration, t => ...) with easing
-        │   ├── numeric.js        derivative, integral, formatting, random numbers
-        │   ├── markdown.js       Markdown + LaTeX rendering (marked + KaTeX)
-        │   ├── account.js        signed-in user, balance, free answers (from /api/me)
-        │   ├── notebook.js       saved lessons API (/api/lessons)
-        │   ├── documents.js      reads an attached PDF / text file in the browser (pdf.js)
-        │   ├── api.js            fetch wrapper for /api/ask
-        │   └── dom.js            el() helper for creating elements
-        └── topics/               one file per built-in topic
-            ├── calculus/         derivative, riemann-sums, taylor-series
-            ├── linear-algebra/   linear-transformations, matrix-composition, eigenvectors
-            ├── analysis/         fourier-series
-            └── probability/      central-limit-theorem
-```
-
-## Adding a topic
-
-1. Create `public/js/topics/<category>/<name>.js`. Copying an existing topic is the quickest start. A topic is one object:
-
-   ```js
-   import { Plot, COLORS } from '../../lib/plot.js';
-   import { addSlider, addReadout, addSteps } from '../../lib/controls.js';
-
-   export default {
-     id: 'my-topic',                    // used in the URL: #/topic/my-topic
-     title: 'My Topic',
-     category: 'Calculus',
-     level: 'Undergraduate',            // Foundations | Undergraduate | Graduate
-     summary: 'One sentence for the card.',
-     explanation: String.raw`Markdown with $LaTeX$ here.`,
-
-     mount({ plotArea, controls, lesson }) {
-       const state = { k: 1 };
-       const plot = new Plot(plotArea, { xMin: -5, xMax: 5, yMin: -3, yMax: 3 });
-       const readout = addReadout(controls, 'k²');
-
-       addSlider(controls, { label: 'k', min: 0, max: 3, step: 0.1, value: 1,
-         onInput: (v) => { state.k = v; update(); } });
-
-       plot.onDraw = (p) => {
-         p.grid();
-         p.curve((x) => Math.sin(state.k * x));
-       };
-
-       function update() {
-         readout.text(String(state.k ** 2));
-         plot.render();
-       }
-
-       // The lesson: each step's enter() sets up the scene the text talks about
-       const steps = addSteps(lesson, [
-         { title: 'Start with k = 1', text: String.raw`One wave: $\sin x$.`, focus: 'Watch the curve.',
-           enter: () => { state.k = 1; update(); } },
-         { title: 'Double the frequency', text: String.raw`Now $\sin 2x$ wiggles twice as fast.`,
-           enter: () => { state.k = 2; update(); } },
-       ]);
-       update();
-       steps.go(0);
-
-       return () => plot.destroy();     // cleanup when the user leaves the page
-     },
-   };
-   ```
-
-2. Import it in `public/js/topics.js`, add it to the `topics` array, and add its id to a learning path in `paths` (that places it on the Explore map).
-
-Tips:
-- Read colours from `COLORS` inside `onDraw` (not once at the top of the file), so the light/dark switch repaints correctly. For transparency use `alpha(COLORS.blue, 0.3)`, never a hard-coded `rgba(...)`.
-- Every lesson should have steps: `addSteps(lesson, [{ title, text, focus, enter() }])`. `text` is Markdown with LaTeX, `focus` is the "Look for" line, and `enter()` sets up the scene so the visual matches the text. Readers can jump to any step, so set the whole scene in each `enter()`.
-- Controls are grouped into cards automatically: every `addHeading()` starts a new card.
-- No emoji in labels: use `addButtons(controls, [{ label: 'Play', icon: 'play', ... }])` with an icon from `lib/icons.js`.
-- Use `String.raw` for explanations so LaTeX backslashes work as written. Never write `${` inside it.
-- Keep one `update()` function per topic that refreshes the readouts and calls `plot.render()`. Every control and drag handler calls it.
-- If you start an animation (`requestAnimationFrame`/`setInterval`), stop it in the returned cleanup function.
-
-## Design, theme, zoom and Graph Lab
-
-- **Layout:** no sidebars. A top bar (Explore, Graph Lab, Ask, search), and lesson pages built as a *lesson player*: the visual and the step rail share one card that fits the screen on desktop, so the picture and the explanation are always visible together. Controls sit below as a row of instrument cards. ← and → move between steps.
-- **Explore** shows learning paths as lines of stations and remembers which lessons you've opened (in this browser only).
-- **Type:** Fraunces for headings, IBM Plex Sans for text, IBM Plex Mono for numbers (Google Fonts).
-- **Colours** live in one place: the `--plot-*` and `--c-*` variables at the top of `public/css/styles.css`, one block for light and one for dark. `theme.js` reads them into `COLORS`. Inside KaTeX you can colour text with `\htmlClass{c-green}{...}`.
-- **Zoom/pan** is built into every `Plot`. Scroll or pinch to zoom (plain scrolling zooms after you click the graph, so the page still scrolls), drag empty space to pan, double-click to zoom in, and use the corner buttons. Pass `{ zoom: false }` to turn it off.
-- **Graph Lab 3D:** switch to 3D at the top of Graph Lab. `z = x^2 - y^2` (or any expression using x and y) draws a rotatable surface with contour lines, `(a, b, c)` draws a point, and sliders still animate everything. It uses Plotly, loaded only when you open 3D.
-- **Graph Lab** (`#/graph`) understands `y = …`, `f(x) = …`, `a = 2` (a slider), `k = 2a`, `x = 3`, points like `(h, k)` (draggable when they use sliders) and plain calculations. The graph is saved in the URL, so the Share button gives a link that reproduces it.
-
-## Accounts, free limits and credits
-
-Only **Ask AI** costs money to run, so only it is limited. Built-in topics and Graph Lab stay free and need no account.
-
-1. **Sign up** (email + password, or Google): 5 free chats. Nobody gets a free chat without an account (`TRIAL_ANSWERS` is 0). Sign-up doesn't check that an email address is real, so the site-wide limit below is what stops fake accounts from running up the bill. Up to 1,000 new accounts per network per day get them, high enough for a whole campus on one shared address. All free chats together are limited to 200 a day across the site (`FREE_CHATS_SITE_PER_DAY`), about ₹100 a day at normal lesson sizes. When they run out, people who have bought credit carry on, and everyone else's free chats wait until the next day.
-2. **Credits:** after that, people top up any amount from ₹10 with Razorpay (UPI, cards, netbanking). Each answer is charged at **its real AI cost** (tokens × the model's price, converted to ₹) plus 3% to cover Razorpay's fee. A chat is a new lesson, a change to a picture, or a set of `QUESTIONS_PER_CHAT` (4) follow-up questions. The first `FREE_QUESTIONS_PER_DAY` (4) questions a day are free. A set of questions is charged the average chat price, not its real cost. With gpt-6-luna on medium reasoning effort a new lesson costs about ₹0.50, so ₹10 ≈ 20 chats. Prices are quoted at the lesson price. The top-up dialog shows the live average.
-
-Failed answers are never charged, and only one question per account runs at a time. All limits and prices are in `.env.example`.
-
-**Turn on payments:** create a Razorpay account, switch to Test Mode, copy the API keys into `.env` as `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET`, and restart. Test payments use Razorpay's test cards/UPI and no real money moves. For live mode Razorpay needs your KYC and website policy pages (terms, privacy, refunds, contact). Optionally add a webhook (events `payment.captured`, `order.paid`) pointing to `https://<your-site>/api/payments/webhook` and set `RAZORPAY_WEBHOOK_SECRET`, so a payment still counts if the buyer closes the tab early.
-
-**Turn on Google sign-in:** in Google Cloud Console create an OAuth client ID of type *Web application*, add `http://localhost:3000` and `http://localhost` (and later your real domain) under *Authorized JavaScript origins*, then set `GOOGLE_CLIENT_ID` in `.env` and restart. Only the client ID is used. The client secret isn't needed, so keep it out of MathLens.
-
-## Policy pages and receipts
-
-Razorpay checks these pages before it approves a live account, so they're plain server-rendered pages that load without JavaScript:
-
-| Page | What it says |
-| --- | --- |
-| `/about` | what MathLens is and who runs it |
-| `/pricing` | free limits, the live average price per lesson, what each top-up buys |
-| `/contact` | support email, phone, address |
-| `/terms` | terms and conditions |
-| `/privacy` | what is stored, who it's shared with (AI provider, Razorpay, Google) |
-| `/refunds` | cancellation and refund policy |
-| `/delivery` (also `/shipping`) | credit is digital and added straight away |
-| `/receipt/sample` | a sample receipt (print it to PDF if Razorpay asks for a sample invoice) |
-| `/receipts` | a signed-in person's payments, each with a printable receipt |
-
-Fill in your details in `.env`: `BUSINESS_NAME` (your name or company, as on your Razorpay KYC), `SUPPORT_EMAIL` and `BUSINESS_ADDRESS` are needed. `BUSINESS_PHONE`, `BUSINESS_CITY`, and `BUSINESS_GSTIN` (receipts become tax invoices) are optional. Until they're set, the pages show a red "set X in .env" marker and the server prints a reminder at startup. The policy text is a starting point. Read it and change `server/pages.js` to match how you actually run things; it isn't legal advice.
-
-**Turn on password reset:** set `SMTP_HOST`, `SMTP_USER` and `SMTP_PASS` in `.env` (see `.env.example`), plus `PUBLIC_URL` once deployed. Links work once, for one hour, and using one logs the account out everywhere else. Without SMTP on your own machine, the link is printed in the server log so you can test it.
-
-**Data:** everything is stored in `data/mathlens.db` (git-ignored). Passwords are hashed with scrypt; session cookies are HttpOnly. Back this file up once real people pay.
-
-## Notebook and papers
-
-- **Every lesson is saved.** Each answer goes into the `lessons` table with its question. Asking the same question again returns the saved lesson for free, and before asking, the Ask page checks for an earlier lesson on nearly the same question and offers to open it. Lessons asked before signing up move to the account at sign-up. `#/notebook` lists them all.
-- **Papers.** On the Ask page, attach a PDF, TXT, Markdown or LaTeX file (or drag it onto the box). The browser pulls the text out with pdf.js; the file itself is never uploaded. Up to 120,000 characters go to the AI with an optional focus question, and it teaches the paper's central idea step by step with a toy visualization. Scanned PDFs (pictures of pages) have no text, so they can't be read yet. The prompt tells the AI to treat the document as material, never as instructions.
-
-## Writing style
-
-Lessons are written for a reader learning slowly: one idea per step, plain words before symbols, worked examples split across steps, and an occasional quick check. The AI prompt (`server/prompt.js`) bans common machine-writing habits: "not X, but Y" contrasts, double negatives, dramatic one-line endings, hype words and dashes. Bold is kept for the one phrase per step worth remembering.
-
-## How Ask AI works
-
-1. The browser sends the question, plus the list of built-in topics, to `POST /api/ask`. Asking the same question again within 10 minutes (for example after a reload) returns the same lesson for free.
-2. `server/ai.js` calls the configured provider. Claude (`claude-opus-5-5` by default; set `CLAUDE_MODEL` to change it) uses **structured outputs**. OpenAI-compatible servers get the same schema as `response_format`, and the server falls back to plain JSON mode if the schema is rejected. Either way the reply is JSON with `title`, `explanation`, `keyIdeas`, `visualizationGuide`, `visualizationHtml` and `relatedBuiltInTopic`.
-   The answer is a lesson: `title`, `intro`, 4 to 7 `steps` (each `{ title, explanation, visualFocus }`), `keyIdeas`, `visualizationHtml` and `relatedBuiltInTopic`.
-3. Before sending the answer, the server repairs a common AI mistake: LaTeX written in plain JavaScript strings, where `'\frac'` silently becomes a form feed plus "rac" (`server/latex-repair.js`).
-4. The page renders the explanation (Markdown + KaTeX) and loads `visualizationHtml` into an `<iframe sandbox="allow-scripts">` together with the **viz kit** (`public/viz-kit/`): polished default styles for controls, layout classes (`.ml-panel`, `.ml-grid-2`, `.ml-eq`, `.ml-stats`, `.ml-legend`...), escape-proof equations (`<div class="ml-eq" data-tex="\nabla f">`, auto-shrunk to fit), and automatic frame height so nothing is clipped. Edit `kit.css` to restyle every AI visualization at once.
-5. **Steps drive the visual.** When the reader presses Next, the page sends `{ type: 'mathlens:step', index }` into the frame and the AI's code, registered with `MathLens.onStep((index) => ...)`, switches to that step's scene. The prompt requires a distinct, animated scene for every step.
-6. The frame also gets the current theme's colours added as CSS variables (`--bg`, `--text`, `--blue`, ...). The prompt tells the AI to use them, so its visualizations match light or dark mode. The sandbox lets the AI-generated code run but blocks it from reading or changing the main page.
-
-Answers usually take 20–60 seconds because the model writes a full interactive program. The prompt (`server/prompt.js`) asks for detailed, multi-view visualizations on advanced topics, 3D (Plotly) on the first try whenever the idea is three-dimensional, and live KaTeX equations inside the visualization.
-
-## Ideas for next steps
-
-- More built-in topics: gradient & level sets, SVD, complex functions (domain coloring), ODE phase portraits, Markov chains, Bayes' theorem, convolution.
-- Save AI lessons in the database so popular questions load instantly for everyone and never cost API usage twice.
-- Follow-up questions on an AI answer ("now show it in 3D").
-- A "Graduate" track: measure theory, functional analysis, differential geometry.
-
-## Deploying on an Oracle Always Free server
-
-The site runs on one Ubuntu server, with Cloudflare Tunnel in front. Visitors reach it through Cloudflare, so the server needs no open web ports and HTTPS is handled for you.
-
-**Server:** the Always Free `VM.Standard.E2.1.Micro` (1 GB memory) in Mumbai, because Ampere A1 was out of capacity there. Oracle treats a Micro as idle if CPU and network use stay under 20% for 7 days, which a quiet site can do. Check the server still runs now and then, and start it again if Oracle has stopped it. The setup script also works on A1 if you move later.
-
-- `deploy/deploy.sh ubuntu@SERVER_IP https://your.site` sets up the server, uploads `.env` with the live settings, and starts the site. Use it again whenever `.env` changes.
-- `deploy/deploy.sh ubuntu@SERVER_IP` sends the latest commit and restarts.
-- The database is at `/var/lib/mathlens`. See "Backups" below.
-- The tunnel gives up on a request after about 125 seconds. If a very long lesson hits that, asking again joins the same answer or opens the saved lesson without another charge.
-
-## Backups
-
-Every day the server copies the database, keeps the last 14 copies in `/var/backups/mathlens`, encrypts the new copy and pushes it to the private repo `samyakbaid/mathlens-backups`, which keeps the last 30. If a backup fails, the server emails `SUPPORT_EMAIL`.
-
-**The key:** backups can only be opened with `~/.config/mathlens/backup-key.txt` on your Mac. Keep a second copy in a password manager. Without it, every backup is unreadable. The server only holds the public half, so a hacked server can't read old backups.
-
-**Run a backup now:**
-```
-ssh ubuntu@130.210.7.218 'sudo systemctl start mathlens-backup && sudo journalctl -u mathlens-backup -n 5 --no-pager'
-```
-
-**Get a copy back on your Mac** (doesn't touch the live site):
-```
-deploy/restore-backup.sh
-```
-It decrypts the newest backup to `~/mathlens-restore/mathlens.db` and prints the integrity check and counts. To pick an older one, pass its file name from the `backups/` folder on GitHub. Delete the file when you're done, because it holds customer data.
-
-**Put a backup on the live site** (only after real data loss, because anything newer than the backup is lost):
-```
-scp ~/mathlens-restore/mathlens.db ubuntu@130.210.7.218:/tmp/restore.db
-ssh ubuntu@130.210.7.218
-sudo systemctl stop mathlens
-sudo mv /var/lib/mathlens/mathlens.db /var/lib/mathlens/mathlens.db.before-restore
-sudo rm -f /var/lib/mathlens/mathlens.db-wal /var/lib/mathlens/mathlens.db-shm
-sudo install -o mathlens -g mathlens -m 600 /tmp/restore.db /var/lib/mathlens/mathlens.db
-rm /tmp/restore.db
-sudo systemctl start mathlens
-```
-
-## How AI lessons are built
-
-The AI writes one running example worked by hand, and only then the formula (the method is in `server/prompt.js`). The page adds these around whatever it writes, so saved lessons get most of them without being rewritten:
-
-- `public/viz-kit/graph.js`: `MathLens.graph`, a 2D graph that zooms, moves and keeps labels on the exact point they name, plus zoom buttons for Plotly charts and any other canvas or SVG.
-- Coloured phrases: `[[orange:the tangent line]]` in a step's text shows a dot and underline in that colour, and hovering lights up that colour in the picture.
-- `server/viz-check.js`: every lesson's scripts must compile before it's saved. Known slips are fixed locally, others go back to the AI once, and if it's still broken the lesson fails and isn't charged.
-- If a lesson takes over 20 seconds, the server sends spaces to keep the connection open, because Cloudflare gives up after about 125 seconds of silence.
-
-To compare models, set `AI_MODEL` and `AI_REASONING_EFFORT`. Prices live in `server/billing.js`, and customers are charged each lesson's real cost, so the displayed average follows the model.
-
-## Follow-up chats
-
-Every lesson, AI or built-in, has an **Ask a question** button that opens a chat in place of the step text, so the picture stays in view (`public/js/views/lesson-chat.js`, `server/followups.js`).
-
-- A question gets a quick answer from one small AI call that doesn't carry the picture's code (about ₹0.04 and 5 seconds with gpt-6-luna). `AI_CHAT_EFFORT` can set a different effort from lessons, but in testing low effort barely saved money and made more mistakes.
-- A request to change the picture makes a second call that rewrites it. In an AI lesson that edits the current picture. In a built-in lesson it builds a new one that replaces the hand-made picture until the reader goes back. Changed pictures go through the same compile check as lessons, and the original is always one click away.
-- The first 4 questions a day are free for each person. After that, the first question of a set takes one chat (a free chat, or the average chat price from credit) and covers 3 more, which stay until they're used. Changing a picture always uses a chat of its own.
-- What free questions can cost is capped four ways: 150 a day per network for people without an account, 250 a day per network for everyone, 300 a day on the whole site, and a limit of 2,000 tokens on each reply. A reply that hits that limit is cut at its last whole sentence and still counts as a question, so asking for something huge over and over can't run up the bill. Answers still being written count toward the limits, so a burst of requests can't get past them.
-- Asking the same thing about the same step again is free, and a failed answer is never charged.
-- Chats are saved in the `followups` table with the lesson or topic, and a reopened lesson shows its latest changed picture.
-
-## Checking how it is used
-
-`deploy/stats.sh ubuntu@130.210.7.218` prints new accounts, lessons, questions, free chats, top-ups, credit spent and AI cost for today (India time), the last 7 days and all time, plus the latest payments. It only reads the database.
-
-If the AI account runs out of credit, students see "The tutor is taking a short break" and the server emails `SUPPORT_EMAIL` (at most once every 6 hours).
+Built by [Samyak Baid](https://github.com/samyakbaid), a Mathematics and Computer Science student at Ashoka University. Questions and ideas are welcome through [mathlens.in/contact](https://mathlens.in/contact).
